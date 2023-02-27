@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33213.308
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OGameSim", "OGameSim.csproj", "{B11DB30B-499C-4554-BDC4-C1F5703805AA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "..\Tests\Tests.csproj", "{8E74DFD4-578E-43A3-A081-D83E2CFD1B34}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B11DB30B-499C-4554-BDC4-C1F5703805AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B11DB30B-499C-4554-BDC4-C1F5703805AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B11DB30B-499C-4554-BDC4-C1F5703805AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B11DB30B-499C-4554-BDC4-C1F5703805AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E74DFD4-578E-43A3-A081-D83E2CFD1B34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E74DFD4-578E-43A3-A081-D83E2CFD1B34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E74DFD4-578E-43A3-A081-D83E2CFD1B34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E74DFD4-578E-43A3-A081-D83E2CFD1B34}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2D9FA5E0-5288-4E0B-AAD2-841F53BA6377}
+	EndGlobalSection
+EndGlobal
