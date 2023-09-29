@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using OGameSim.Entities;
 using OGameSim.Models;
@@ -23,16 +24,12 @@ namespace OGameSim.Services
 
 		public void FindAndBuildUpgrades()
 		{
-			bool hasFoundUpgrade;
 			var upgradeables = GetUpgradeables();
-			do
+
+			while (TryGetUpgrade(upgradeables, out var upgrade))
 			{
-				var bestUpgrade = TryFindBestUpgrade(upgradeables, out hasFoundUpgrade);
-				if (hasFoundUpgrade)
-				{
-					bestUpgrade.Apply(_state);
-				}
-			} while (hasFoundUpgrade);
+				upgrade.Apply(_state);
+			}
 		}
 
 		public List<IUpgradeable> GetUpgradeables()
@@ -48,7 +45,7 @@ namespace OGameSim.Services
 			return upgradeables;
 		}
 
-		public Upgrade? TryFindBestUpgrade(List<IUpgradeable> upgradeables, out bool hasFoundUpgrade)
+		public bool TryGetUpgrade(List<IUpgradeable> upgradeables, [NotNullWhen(true)] out Upgrade? foundUpgrade)
 		{
 			var upgrades = new List<Upgrade>();
 			for (var i = upgradeables.Count - 1; i >= 0; i--)
@@ -66,16 +63,17 @@ namespace OGameSim.Services
 
 			if (upgrades.Any())
 			{
-				hasFoundUpgrade = true;
-				return upgrades.ToLookup(CalculateRoi)
+				foundUpgrade = upgrades.ToLookup(CalculateRoi)
 					.OrderByDescending(x => x.Key)
 					.First()
 					.First();
+
+				return true;
 			}
 			else
 			{
-				hasFoundUpgrade = false;
-				return null;
+				foundUpgrade = null;
+				return false;
 			}
 		}
 	}

@@ -15,7 +15,8 @@ namespace OGameSim.Services
 		public GameStateWriter(InitialGameStateCreator creator, GameState state)
 		{
 			_state = state;
-			var streamWriter = new StreamWriter($"{DateTime.Now.Ticks}.csv");
+			Directory.CreateDirectory(".output");
+			var streamWriter = new StreamWriter($".output/{DateTime.Now.Ticks}.csv");
 			_writer = new(streamWriter, Thread.CurrentThread.CurrentCulture);
 
 			_writer.WriteHeader<InitialGameStateCreator>();
