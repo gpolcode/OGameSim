@@ -2,35 +2,29 @@
 
 namespace OGameSim.Entities
 {
-	public abstract class Mine : IUpgradeable, IResourceProducer
-	{
-		public uint Level { get; private set; }
-		private Resources _production;
+    public abstract class Mine : IUpgradable
+    {
+        protected Mine(Resources baseProduction)
+        {
+            TodaysProduction = baseProduction;
+            UpgradeCost = CalculateUpgradeCost();
+            UpgradeIncreasePerDay = CalculateUpgradeCost() - TodaysProduction;
+        }
 
-		protected Mine(Resources baseProduction)
-		{
-			_production = baseProduction;
-		}
+        public void Upgrade()
+        {
+            Level++;
+            TodaysProduction += UpgradeIncreasePerDay;
+            UpgradeCost = CalculateUpgradeCost();
+            UpgradeIncreasePerDay = CalculateUpgradedProduction() - TodaysProduction;
+        }
 
-		public void Apply(Upgrade upgrade)
-		{
-			Level++;
-			_production += upgrade.ProductionIncreasePerDay;
-		}
+        public uint Level { get; private set; }
+        public Resources TodaysProduction { get; private set; }
+        public Resources UpgradeCost { get; private set; }
+        public Resources UpgradeIncreasePerDay { get; private set; }
 
-		public Resources GetTodaysProduction()
-		{
-			return _production;
-		}
-
-		public Upgrade GetUpgrade()
-		{
-			var productionDelta = GetUpgradedProduction() - GetTodaysProduction();
-			return new(GetUpgradeCost(), productionDelta, this);
-		}
-
-		protected abstract Resources GetUpgradeCost();
-
-		protected abstract Resources GetUpgradedProduction();
-	}
+        protected abstract Resources CalculateUpgradeCost();
+        protected abstract Resources CalculateUpgradedProduction();
+    }
 }

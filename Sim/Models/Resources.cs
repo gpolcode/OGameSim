@@ -1,36 +1,34 @@
-﻿namespace OGameSim.Models
+﻿using System;
+
+namespace OGameSim.Models
 {
-	public readonly struct Resources
-	{
-		public ulong Crystal { get; }
-		public ulong Deuterium { get; }
-		public ulong Metal { get; }
+    public readonly record struct Resources(ulong Metal, ulong Crystal, ulong Deuterium)
+    {
+        public static Resources operator +(Resources a, Resources b) =>
+            new(a.Metal + b.Metal, a.Crystal + b.Crystal, a.Deuterium + b.Deuterium);
 
-		public Resources(ulong metal, ulong crystal, ulong deuterium)
-		{
-			Metal = metal;
-			Crystal = crystal;
-			Deuterium = deuterium;
-		}
+        public static Resources operator -(Resources a, Resources b) =>
+            new(a.Metal - b.Metal, a.Crystal - b.Crystal, a.Deuterium - b.Deuterium);
 
-		public static Resources operator +(Resources a, Resources b)
-			=> new(a.Metal + b.Metal, a.Crystal + b.Crystal, a.Deuterium + b.Deuterium);
+        public static Resources operator *(Resources a, ResourcesModifier b) =>
+            new(
+                (ulong)Math.Floor(a.Metal * b.Metal),
+                (ulong)Math.Floor(a.Crystal * b.Crystal),
+                (ulong)Math.Floor(a.Deuterium * b.Deuterium)
+            );
 
-		public static Resources operator -(Resources a, Resources b)
-			=> new(a.Metal - b.Metal, a.Crystal - b.Crystal, a.Deuterium - b.Deuterium);
+        public bool CanSubtract(Resources other)
+        {
+            return ConvertToMetalValue() >= other.ConvertToMetalValue();
+        }
 
-		public bool CanSubtract(Resources other)
-		{
-			return ConvertToMetalValue() >= other.ConvertToMetalValue();
-		}
+        public ulong ConvertToMetalValue()
+        {
+            var metalValue = Metal * ResourceWeight.MetalValue;
+            var crystalValue = Crystal * ResourceWeight.CrystalValue;
+            var deuteriumValue = Deuterium * ResourceWeight.DeuteriumValue;
 
-		public ulong ConvertToMetalValue()
-		{
-			var metalValue = (ulong)(Metal * ResourceWeight.MetalValue);
-			var crystalValue = (ulong)(Crystal * ResourceWeight.CrystalValue);
-			var deuteriumValue = (ulong)(Deuterium * ResourceWeight.DeuteriumValue);
-
-			return metalValue + crystalValue + deuteriumValue;
-		}
-	}
+            return metalValue + crystalValue + deuteriumValue;
+        }
+    }
 }

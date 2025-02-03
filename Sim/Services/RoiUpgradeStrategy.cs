@@ -6,75 +6,79 @@ using OGameSim.Models;
 
 namespace OGameSim.Services
 {
-	public class RoiUpgradeStrategy : IUpgradeStrategy
-	{
-		private readonly GameState _state;
+    public class RoiUpgradeStrategy : IUpgradeStrategy
+    {
+        private readonly Player _state;
 
-		public RoiUpgradeStrategy(GameState state)
-		{
-			_state = state;
-		}
+        public RoiUpgradeStrategy(Player state)
+        {
+            _state = state;
+        }
 
-		public double CalculateRoi(Upgrade upgrade)
-		{
-			var weightedCost = upgrade.Cost.ConvertToMetalValue();
-			var weightedIncrease = upgrade.ProductionIncreasePerDay.ConvertToMetalValue();
-			return weightedCost / weightedIncrease;
-		}
+        public double CalculateRoi(Upgrade upgrade)
+        {
+            var weightedCost = upgrade.Cost.ConvertToMetalValue();
+            var weightedIncrease = upgrade.ProductionIncreasePerDay.ConvertToMetalValue();
+            return weightedCost / weightedIncrease;
+        }
 
-		public void FindAndBuildUpgrades()
-		{
-			var upgradeables = GetUpgradeables();
+        public void FindAndBuildUpgrades()
+        {
+            var upgradeables = GetUpgradeables();
 
-			while (TryGetUpgrade(upgradeables, out var upgrade))
-			{
-				upgrade.Apply(_state);
-			}
-		}
+            while (TryGetUpgrade(upgradeables, out var upgrade))
+            {
+                upgrade.Apply(_state);
+            }
+        }
 
-		public List<IUpgradeable> GetUpgradeables()
-		{
-			var upgradeables = new List<IUpgradeable>();
-			foreach (var planet in _state.Planets)
-			{
-				upgradeables.Add(planet.MetalMine);
-				upgradeables.Add(planet.CrystalMine);
-				upgradeables.Add(planet.DeuteriumSynthesizer);
-			}
+        public List<IUpgradeable> GetUpgradeables()
+        {
+            var upgradeables = new List<IUpgradeable>();
+            foreach (var planet in _state.Planets)
+            {
+                upgradeables.Add(planet.MetalMine);
+                upgradeables.Add(planet.CrystalMine);
+                upgradeables.Add(planet.DeuteriumSynthesizer);
+            }
 
-			return upgradeables;
-		}
+            return upgradeables;
+        }
 
-		public bool TryGetUpgrade(List<IUpgradeable> upgradeables, [NotNullWhen(true)] out Upgrade? foundUpgrade)
-		{
-			var upgrades = new List<Upgrade>();
-			for (var i = upgradeables.Count - 1; i >= 0; i--)
-			{
-				var upgrade = upgradeables[i].GetUpgrade();
-				if (_state.Resources.CanSubtract(upgrade.Cost))
-				{
-					upgrades.Add(upgrade);
-				}
-				else
-				{
-					upgradeables.RemoveAt(i);
-				}
-			}
+        public bool TryGetUpgrade(
+            List<IUpgradeable> upgradeables,
+            [NotNullWhen(true)] out Upgrade? foundUpgrade
+        )
+        {
+            var upgrades = new List<Upgrade>();
+            for (var i = upgradeables.Count - 1; i >= 0; i--)
+            {
+                var upgrade = upgradeables[i].GetUpgrade();
+                if (_state.Resources.CanSubtract(upgrade.Cost))
+                {
+                    upgrades.Add(upgrade);
+                }
+                else
+                {
+                    upgradeables.RemoveAt(i);
+                }
+            }
 
-			if (upgrades.Any())
-			{
-				foundUpgrade = upgrades.ToLookup(CalculateRoi)
-					.OrderByDescending(x => x.Key)
-					.First()
-					.First();
+            if (upgrades.Any())
+            {
+                foundUpgrade = upgrades
+                    .ToLookup(CalculateRoi)
+                    .OrderByDescending(x => x.Key)
+                    .First()
+                    .First();
 
-				return true;
-			}
-			else
-			{
-				foundUpgrade = null;
-				return false;
-			}
-		}
-	}
+                return true;
+            }
+            else
+            {
+                foundUpgrade = null;
+                return false;
+            }
+        }
+    }
 }
