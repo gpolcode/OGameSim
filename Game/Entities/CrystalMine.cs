@@ -1,5 +1,5 @@
 ﻿using System;
-using OGameSim.Models;
+using OGameSim.Production;
 
 namespace OGameSim.Entities
 {

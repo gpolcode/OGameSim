@@ -1,5 +1,4 @@
 using OGameSim.Entities;
-using OGameSim.Models;
 using Xunit;
 
 namespace Tests
@@ -15,15 +14,14 @@ namespace Tests
         public void Crystal_mine_should_produce_crystal(uint level, ulong expectedProduction)
         {
             // Setup
-            var state = new GameState { AreResourcesFrozen = true };
             var subject = new CrystalMine();
             for (var i = 0; i < level; i++)
             {
-                subject.GetUpgrade().Apply(state);
+                subject.Upgrade();
             }
 
             // Act
-            var production = subject.GetTodaysProduction();
+            var production = subject.TodaysProduction;
 
             // Assert
             Assert.Equal(0u, production.Metal);
@@ -44,15 +42,14 @@ namespace Tests
         )
         {
             // Setup
-            var state = new GameState { AreResourcesFrozen = true };
             var subject = new CrystalMine();
             for (var i = 0; i < level; i++)
             {
-                subject.GetUpgrade().Apply(state);
+                subject.Upgrade();
             }
 
             // Act
-            var upgradeCost = subject.GetUpgrade().Cost;
+            var upgradeCost = subject.UpgradeCost;
 
             // Assert
             Assert.Equal(metal, upgradeCost.Metal);

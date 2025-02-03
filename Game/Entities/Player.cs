@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
-using OGameSim.Entities;
+﻿using System;
+using System.Collections.Generic;
+using OGameSim.Production;
 
-namespace OGameSim.Models
+namespace OGameSim.Entities
 {
     public class Player
     {
@@ -10,7 +11,7 @@ namespace OGameSim.Models
         {
             get
             {
-                var missingPlanets = (Astrophysics.Level / 2) + 1 - _planets.Count;
+                var missingPlanets = Math.Ceiling(Astrophysics.Level / 2d) + 1 - _planets.Count;
                 for (int i = 0; i < missingPlanets; i++)
                 {
                     _planets.Add(new(-115));
@@ -26,7 +27,7 @@ namespace OGameSim.Models
         public decimal Points { get; private set; }
         public Resources Resources { get; private set; }
 
-        private void AddResources(Resources resources)
+        internal void AddResources(Resources resources)
         {
             Resources += resources;
         }

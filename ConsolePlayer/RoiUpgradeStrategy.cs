@@ -2,18 +2,12 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using OGameSim.Entities;
-using OGameSim.Models;
 
 namespace OGameSim.Services
 {
-    public class RoiUpgradeStrategy : IUpgradeStrategy
+    public class RoiUpgradeStrategy
     {
-        private readonly Player _state;
-
-        public RoiUpgradeStrategy(Player state)
-        {
-            _state = state;
-        }
+        public Player Player { get; } = new();
 
         public double CalculateRoi(Upgrade upgrade)
         {

@@ -1,8 +1,8 @@
-﻿using OGameSim.Models;
+﻿using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
-    public interface IUpgradable
+    internal interface IUpgradable
     {
         uint Level { get; }
         Resources UpgradeCost { get; }

@@ -1,4 +1,5 @@
-﻿using OGameSim.Models;
+﻿using System;
+using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
@@ -7,6 +8,7 @@ namespace OGameSim.Entities
         public PlasmaTechnology()
         {
             SetUpgradeCost();
+            SetModifier();
         }
 
         public uint Level { get; private set; }
@@ -17,8 +19,13 @@ namespace OGameSim.Entities
         {
             Level++;
             SetUpgradeCost();
+            SetModifier();
+        }
+
+        private void SetModifier()
+        {
             Modifier = new(
-                1 + (Level * 1 / 100),
+                1 + (Level * 1m / 100),
                 1 + (Level * 0.66m / 100),
                 1 + (Level * 0.33m / 100)
             );
@@ -26,8 +33,12 @@ namespace OGameSim.Entities
 
         private void SetUpgradeCost()
         {
-            var exponent = 2 * (Level + 1);
-            UpgradeCost = new(2000 ^ exponent, 4000 ^ exponent, 1000 ^ exponent);
+            var nextLevel = Level + 1;
+            UpgradeCost = new(
+                2000 * (ulong)Math.Pow(2, Math.Max(1L, nextLevel - 1)),
+                4000 * (ulong)Math.Pow(2, Math.Max(1L, nextLevel - 1)),
+                1000 * (ulong)Math.Pow(2, Math.Max(1L, nextLevel - 1))
+            );
         }
     }
 }

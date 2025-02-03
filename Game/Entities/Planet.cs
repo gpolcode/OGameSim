@@ -1,6 +1,4 @@
-﻿using OGameSim.Entities;
-
-namespace OGameSim.Models
+﻿namespace OGameSim.Entities
 {
     public class Planet
     {

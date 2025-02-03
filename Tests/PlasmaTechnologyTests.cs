@@ -6,7 +6,7 @@ namespace Tests
     public class PlasmaTechnologyTests
     {
         [Theory]
-        [InlineData(0, 0, 0, 0)]
+        [InlineData(0, 1, 1, 1)]
         [InlineData(1, 1.01, 1.0066, 1.0033)]
         [InlineData(9, 1.09, 1.0594, 1.0297)]
         [InlineData(15, 1.15, 1.099, 1.0495)]

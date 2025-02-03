@@ -1,4 +1,4 @@
-﻿using OGameSim.Models;
+﻿using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
@@ -8,7 +8,7 @@ namespace OGameSim.Entities
         {
             TodaysProduction = baseProduction;
             UpgradeCost = CalculateUpgradeCost();
-            UpgradeIncreasePerDay = CalculateUpgradeCost() - TodaysProduction;
+            UpgradeIncreasePerDay = CalculateUpgradedProduction() - TodaysProduction;
         }
 
         public void Upgrade()

@@ -1,5 +1,4 @@
 using OGameSim.Entities;
-using OGameSim.Models;
 using Xunit;
 
 namespace Tests
@@ -29,16 +28,14 @@ namespace Tests
         )
         {
             // Setup
-            var state = new GameState { AreResourcesFrozen = true };
-            var planet = new Planet(temperature, 1);
-            var subject = new DeuteriumSynthesizer(planet);
+            var subject = new DeuteriumSynthesizer(temperature);
             for (var i = 0; i < level; i++)
             {
-                subject.GetUpgrade().Apply(state);
+                subject.Upgrade();
             }
 
             // Act
-            var production = subject.GetTodaysProduction();
+            var production = subject.TodaysProduction;
 
             // Assert
             Assert.Equal(0u, production.Metal);
@@ -59,16 +56,14 @@ namespace Tests
         )
         {
             // Setup
-            var state = new GameState { AreResourcesFrozen = true };
-            var planet = new Planet(0, 1);
-            var subject = new DeuteriumSynthesizer(planet);
+            var subject = new DeuteriumSynthesizer(0);
             for (var i = 0; i < level; i++)
             {
-                subject.GetUpgrade().Apply(state);
+                subject.Upgrade();
             }
 
             // Act
-            var upgradeCost = subject.GetUpgrade().Cost;
+            var upgradeCost = subject.UpgradeCost;
 
             // Assert
             Assert.Equal(metal, upgradeCost.Metal);

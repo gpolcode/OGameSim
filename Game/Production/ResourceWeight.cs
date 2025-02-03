@@ -1,4 +1,4 @@
-﻿namespace OGameSim.Models
+﻿namespace OGameSim.Production
 {
     public static class ResourceWeight
     {

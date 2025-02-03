@@ -1,4 +1,4 @@
-﻿using OGameSim.Models;
+﻿using OGameSim.Production;
 using Xunit;
 
 namespace Tests
@@ -83,6 +83,22 @@ namespace Tests
             Assert.Equal(25u, result.Metal);
             Assert.Equal(66u, result.Crystal);
             Assert.Equal(144u, result.Deuterium);
+        }
+
+        [Fact]
+        public void Star_operator_should_multiply_resources()
+        {
+            // Setup
+            var subject = new Resources(23, 59, 131);
+            var modifier = new ResourcesModifier(2, 7, 13);
+
+            // Act
+            var result = subject * modifier;
+
+            // Assert
+            Assert.Equal(46u, result.Metal);
+            Assert.Equal(413u, result.Crystal);
+            Assert.Equal(1703u, result.Deuterium);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace OGameSim.Models
+namespace OGameSim.Production
 {
     public readonly record struct Resources(ulong Metal, ulong Crystal, ulong Deuterium)
     {
