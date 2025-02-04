@@ -1,14 +1,15 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.Metrics;
-using System.Threading;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OGameSim.Entities;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
-using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,19 +19,18 @@ builder
     .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new("http://host.docker.internal:4318"))
     .WithMetrics(metrics =>
     {
-        metrics
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter("MyCustomMetrics");
+        metrics.AddMeter("player");
     })
-    .WithLogging()
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddSource("MyDotNetApp");
-    });
+    .WithLogging(
+        default,
+        options =>
+        {
+            options.IncludeFormattedMessage = true;
+            options.IncludeScopes = true;
+            options.ParseStateValues = true;
+        }
+    )
+    .WithTracing();
 
 var app = builder.Build();
 
@@ -38,31 +38,57 @@ app.MapGet(
     "/",
     () =>
     {
-        using var meter = new Meter("MyCustomMetrics");
-        var requestCounter = meter.CreateCounter<int>("MyCustomMetrics_total");
-        requestCounter.Add(1);
+        var player = new Player();
+        var tracer = new ActivitySource("player");
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-        var id = Activity.Current?.Id;
-        Activity.Current?.SetTag("SetTag", "parent");
-
-        var tracer = new ActivitySource("MyDotNetApp");
-        using (var activity = tracer.StartActivity("CustomTrace"))
+        void LogStateChange(string resourceType, uint level, int day, decimal points)
         {
-            if (id != null)
+            logger.Log(
+                LogLevel.Information,
+                "{resourceType} leveled up to {level} on day {day} now got {points} points",
+                resourceType,
+                level,
+                day,
+                points
+            );
+        }
+
+        var afkNess = Random.Shared.Next(0, 14);
+        for (int i = 0; i < (365 * 8 * 2); i++)
+        {
+            player.ProceedToNextDay();
+            if (Random.Shared.Next(0, afkNess) == 0)
             {
-                activity?.SetParentId(id);
+                continue;
             }
 
-            activity?.AddEvent(new ActivityEvent("sample activity event."));
+            var spentResources = true;
+            while (spentResources)
+            {
+                spentResources = false;
 
-            activity?.SetTag("SetTag", "example");
-            Thread.Sleep(200);
+                var upgradables = player
+                    .Planets.ToList()
+                    .SelectMany(x => new List<IUpgradable>()
+                    {
+                        x.MetalMine,
+                        x.CrystalMine,
+                        x.DeuteriumSynthesizer,
+                    })
+                    .Concat([player.Astrophysics, player.PlasmaTechnology])
+                    .ToArray();
 
-            var logger = app.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogCritical("This is a log message sent to Loki!");
+                var index = Random.Shared.Next(0, upgradables.Length);
+                var upgradable = upgradables[index];
 
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            Thread.Sleep(200);
+                if (player.TrySpendResources(upgradable.UpgradeCost))
+                {
+                    upgradable.Upgrade();
+                    LogStateChange(upgradable.GetType().Name, upgradable.Level, i, player.Points);
+                    spentResources = true;
+                }
+            }
         }
 
         return "lul";
@@ -71,6 +97,23 @@ app.MapGet(
 
 app.Run();
 
+// var id = Activity.Current?.Id;
+// Activity.Current?.SetTag("SetTag", "parent");
+// var tracer = new ActivitySource("MyDotNetApp");
+// using (var activity = tracer.StartActivity("CustomTrace"))
+// {
+//     if (id != null)
+//     {
+//         activity?.SetParentId(id);
+//     }
+//     activity?.AddEvent(new ActivityEvent("sample activity event."));
+//     activity?.SetTag("SetTag", "example");
+//     Thread.Sleep(200);
+//     var logger = app.Services.GetRequiredService<ILogger<Program>>();
+//     logger.LogCritical("This is a log message sent to Loki!");
+//     activity?.SetStatus(ActivityStatusCode.Ok);
+//     Thread.Sleep(200);
+// }
 // var creator = new InitialGameStateCreator
 // {
 //     SimulationDays = 10000,

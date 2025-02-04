@@ -2,7 +2,7 @@
 
 namespace OGameSim.Entities
 {
-    internal interface IUpgradable
+    public interface IUpgradable
     {
         uint Level { get; }
         Resources UpgradeCost { get; }

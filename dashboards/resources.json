@@ -1,0 +1,692 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 4,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 8
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "log": 2,
+              "type": "log"
+            },
+            "show": "lines"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "maxPerRow": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {}
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{service_name=\"MyDotNetApp\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Metal",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "delimiter": ",",
+            "format": "json",
+            "jsonPaths": [],
+            "source": "labels"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": "MetalMine"
+                  }
+                },
+                "fieldName": "resourceType"
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "byVariable": false,
+            "include": {
+              "names": [
+                "TraceId",
+                "day",
+                "level"
+              ]
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "level"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "day"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "TraceId"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": false
+            }
+          }
+        }
+      ],
+      "type": "xychart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 8
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "log": 2,
+              "type": "log"
+            },
+            "show": "lines"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "maxPerRow": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {}
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{service_name=\"MyDotNetApp\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Crystal",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "delimiter": ",",
+            "format": "json",
+            "jsonPaths": [],
+            "source": "labels"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": "CrystalMine"
+                  }
+                },
+                "fieldName": "resourceType"
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "byVariable": false,
+            "include": {
+              "names": [
+                "TraceId",
+                "day",
+                "level"
+              ]
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "level"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "day"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "TraceId"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": false
+            }
+          }
+        }
+      ],
+      "type": "xychart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 8
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "log": 2,
+              "type": "log"
+            },
+            "show": "lines"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 17,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "id": 4,
+      "maxPerRow": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {}
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{service_name=\"MyDotNetApp\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Points",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "delimiter": ",",
+            "format": "json",
+            "jsonPaths": [],
+            "source": "labels"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "byVariable": false,
+            "include": {
+              "names": [
+                "TraceId",
+                "day",
+                "points"
+              ]
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "points"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "day"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "TraceId"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": false
+            }
+          }
+        }
+      ],
+      "type": "xychart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 8
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "log": 2,
+              "type": "log"
+            },
+            "show": "lines"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 17,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "id": 3,
+      "maxPerRow": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {}
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "builder",
+          "expr": "{service_name=\"MyDotNetApp\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Deut",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "delimiter": ",",
+            "format": "json",
+            "jsonPaths": [],
+            "source": "labels"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": "DeuteriumSynthesizer"
+                  }
+                },
+                "fieldName": "resourceType"
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "byVariable": false,
+            "include": {
+              "names": [
+                "TraceId",
+                "day",
+                "level"
+              ]
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "level"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "day"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "TraceId"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": false
+            }
+          }
+        }
+      ],
+      "type": "xychart"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 40,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Applied upgrades",
+  "uid": "bec2vgfhnvw8wc",
+  "version": 15,
+  "weekStart": ""
+}
