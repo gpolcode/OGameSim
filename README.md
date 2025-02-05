@@ -1,8 +1,4 @@
 ## todo
--- plasma unit tests
--- astro unit tests & player
--- resource modifier unit tests
--- astro
 -- identification
 -- q-learning
 
