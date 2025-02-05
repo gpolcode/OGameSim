@@ -33,11 +33,10 @@ namespace OGameSim.Entities
 
         private void SetUpgradeCost()
         {
-            var nextLevel = Level + 1;
             UpgradeCost = new(
-                2000 * (ulong)Math.Pow(2, Math.Max(1L, nextLevel - 1)),
-                4000 * (ulong)Math.Pow(2, Math.Max(1L, nextLevel - 1)),
-                1000 * (ulong)Math.Pow(2, Math.Max(1L, nextLevel - 1))
+                2000 * (ulong)Math.Pow(2, Level),
+                4000 * (ulong)Math.Pow(2, Level),
+                1000 * (ulong)Math.Pow(2, Level)
             );
         }
     }

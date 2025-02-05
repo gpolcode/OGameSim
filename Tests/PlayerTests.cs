@@ -59,9 +59,9 @@ namespace Tests
             var resources = subject.Resources;
 
             // Assert
-            Assert.Equal(720m, resources.Metal);
-            Assert.Equal(360m, resources.Crystal);
-            Assert.Equal(69m, resources.Deuterium);
+            Assert.Equal(1440m, resources.Metal);
+            Assert.Equal(720m, resources.Crystal);
+            Assert.Equal(960m, resources.Deuterium);
         }
 
         [Fact]

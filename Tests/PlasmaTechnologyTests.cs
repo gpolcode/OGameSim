@@ -37,9 +37,9 @@ namespace Tests
         [Theory]
         [InlineData(0, 2000, 4000, 1000)]
         [InlineData(1, 4000, 8000, 2000)]
-        [InlineData(9, 512000, 1024000, 256000)]
-        [InlineData(15, 32768000, 65536000, 16384000)]
-        [InlineData(20, 1048576000, 2097152000, 524288000)]
+        [InlineData(9, 1024000, 2048000, 512000)]
+        [InlineData(15, 65536000, 131072000, 32768000)]
+        [InlineData(19, 1048576000, 2097152000, 524288000)]
         public void Plasma_upgrade_should_cost(
             uint level,
             ulong metal,

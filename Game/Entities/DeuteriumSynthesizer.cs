@@ -3,15 +3,9 @@ using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
-    public class DeuteriumSynthesizer : Mine
+    public class DeuteriumSynthesizer(int planetMaxTemperature) : Mine(new())
     {
-        private readonly int _planetAverageTemperature;
-
-        public DeuteriumSynthesizer(int planetMaxTemperature)
-            : base(new())
-        {
-            _planetAverageTemperature = planetMaxTemperature - 20;
-        }
+        private readonly int _planetAverageTemperature = planetMaxTemperature - 20;
 
         protected override Resources CalculateUpgradeCost()
         {
@@ -24,7 +18,9 @@ namespace OGameSim.Entities
         {
             var nextLevel = Level + 1;
             var productionPerHour =
-                (20 * nextLevel * Math.Pow(1.1, nextLevel))
+                20
+                * nextLevel
+                * Math.Pow(1.1, nextLevel)
                 * (0.68 - 0.002 * _planetAverageTemperature);
 
             var productionPerDay = (ulong)Math.Floor(productionPerHour);
