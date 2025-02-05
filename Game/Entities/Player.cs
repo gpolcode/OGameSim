@@ -25,6 +25,7 @@ namespace OGameSim.Entities
         public PlasmaTechnology PlasmaTechnology { get; } = new();
 
         public decimal Points { get; private set; }
+        public uint Day { get; private set; }
         public Resources Resources { get; private set; }
 
         internal void AddResources(Resources resources)
@@ -52,6 +53,7 @@ namespace OGameSim.Entities
 
         public void ProceedToNextDay()
         {
+            Day++;
             Resources mineProduction = new();
             foreach (var planet in Planets)
             {
