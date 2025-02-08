@@ -8,26 +8,29 @@ namespace OGameSim.Entities
         public PlasmaTechnology()
         {
             SetUpgradeCost();
-            SetModifier();
+            Modifier = CalculateModifier(Level);
+            UpgradedModifier = CalculateModifier(Level + 1);
         }
 
         public uint Level { get; private set; }
         public ResourcesModifier Modifier { get; private set; }
+        public ResourcesModifier UpgradedModifier { get; private set; }
         public Resources UpgradeCost { get; private set; }
 
         public void Upgrade()
         {
             Level++;
             SetUpgradeCost();
-            SetModifier();
+            Modifier = CalculateModifier(Level);
+            UpgradedModifier = CalculateModifier(Level + 1);
         }
 
-        private void SetModifier()
+        private ResourcesModifier CalculateModifier(uint level)
         {
-            Modifier = new(
-                1 + (Level * 1m / 100),
-                1 + (Level * 0.66m / 100),
-                1 + (Level * 0.33m / 100)
+            return new(
+                1 + (level * 1m / 100),
+                1 + (level * 0.66m / 100),
+                1 + (level * 0.33m / 100)
             );
         }
 

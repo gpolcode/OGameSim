@@ -1,135 +1,165 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using OGameSim.Entities;
-using OpenTelemetry;
-using OpenTelemetry.Exporter;
-using OpenTelemetry.Resources;
+using OGameSim.Production;
 
-var builder = WebApplication.CreateBuilder(args);
+var player = new Player();
 
-builder
-    .Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService(serviceName: "MyDotNetApp"))
-    .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new("http://host.docker.internal:4318"))
-    .WithMetrics(metrics =>
+for (int i = 0; i < 8000; i++)
+{
+    var upgradeAndIncreases =
+        new List<(IUpgradable Upgradable, Resources Cost, Resources ProductionIncrease)>();
+
+    foreach (var planet in player.Planets)
     {
-        metrics.AddMeter("player");
-    })
-    .WithLogging(
-        default,
-        options =>
-        {
-            options.IncludeFormattedMessage = true;
-            options.IncludeScopes = true;
-            options.ParseStateValues = true;
-        }
-    )
-    .WithTracing();
+        upgradeAndIncreases.Add(
+            new(
+                planet.MetalMine,
+                planet.MetalMine.UpgradeCost,
+                planet.MetalMine.UpgradeIncreasePerDay
+            )
+        );
 
-var app = builder.Build();
+        upgradeAndIncreases.Add(
+            new(
+                planet.CrystalMine,
+                planet.CrystalMine.UpgradeCost,
+                planet.CrystalMine.UpgradeIncreasePerDay
+            )
+        );
 
-app.MapGet(
-    "/",
-    () =>
-    {
-        var player = new Player();
-        var tracer = new ActivitySource("player");
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-
-        void LogStateChange(string resourceType, uint level, int day, decimal points)
-        {
-            logger.Log(
-                LogLevel.Information,
-                "{resourceType} leveled up to {level} on day {day} now got {points} points",
-                resourceType,
-                level,
-                day,
-                points
-            );
-        }
-
-        var afkNess = Random.Shared.Next(0, 14);
-        for (int i = 0; i < (365 * 8 * 2); i++)
-        {
-            player.ProceedToNextDay();
-            if (Random.Shared.Next(0, afkNess) == 0)
-            {
-                continue;
-            }
-
-            var spentResources = true;
-            while (spentResources)
-            {
-                spentResources = false;
-
-                var upgradables = player
-                    .Planets.ToList()
-                    .SelectMany(x => new List<IUpgradable>()
-                    {
-                        x.MetalMine,
-                        x.CrystalMine,
-                        x.DeuteriumSynthesizer,
-                    })
-                    .Concat([player.Astrophysics, player.PlasmaTechnology])
-                    .ToArray();
-
-                var index = Random.Shared.Next(0, upgradables.Length);
-                var upgradable = upgradables[index];
-
-                if (player.TrySpendResources(upgradable.UpgradeCost))
-                {
-                    upgradable.Upgrade();
-                    LogStateChange(upgradable.GetType().Name, upgradable.Level, i, player.Points);
-                    spentResources = true;
-                }
-            }
-        }
-
-        return "lul";
+        upgradeAndIncreases.Add(
+            new(
+                planet.DeuteriumSynthesizer,
+                planet.DeuteriumSynthesizer.UpgradeCost,
+                planet.DeuteriumSynthesizer.UpgradeIncreasePerDay
+            )
+        );
     }
-);
 
-app.Run();
+    var currentProduction = GetPlayerProduction(player, player.PlasmaTechnology.Modifier);
+    var upgradedProduction = GetPlayerProduction(player, player.PlasmaTechnology.UpgradedModifier);
+    var productionUpgrade = upgradedProduction - currentProduction;
 
-// var id = Activity.Current?.Id;
-// Activity.Current?.SetTag("SetTag", "parent");
-// var tracer = new ActivitySource("MyDotNetApp");
-// using (var activity = tracer.StartActivity("CustomTrace"))
-// {
-//     if (id != null)
-//     {
-//         activity?.SetParentId(id);
-//     }
-//     activity?.AddEvent(new ActivityEvent("sample activity event."));
-//     activity?.SetTag("SetTag", "example");
-//     Thread.Sleep(200);
-//     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-//     logger.LogCritical("This is a log message sent to Loki!");
-//     activity?.SetStatus(ActivityStatusCode.Ok);
-//     Thread.Sleep(200);
-// }
-// var creator = new InitialGameStateCreator
-// {
-//     SimulationDays = 10000,
-//     PlanetCount = 14,
-//     PlanetMaxTemperatur = -120,
-//     PlanetPosition = 1,
-// };
+    upgradeAndIncreases.Add(
+        new(
+            player.PlasmaTechnology,
+            player.PlasmaTechnology.UpgradeCost,
+            productionUpgrade
+        )
+    );
 
-// var state = creator.Create();
-// var gameService = new GameService(state);
-// IUpgradeStrategy upgradeStrategy = new RoiUpgradeStrategy(state);
-// using var writer = new GameStateWriter(creator, state);
+    productionUpgrade = player.Planets[0].MetalMine.TodaysProduction +
+        player.Planets[0].CrystalMine.TodaysProduction +
+        player.Planets[0].DeuteriumSynthesizer.TodaysProduction;
 
-// for (var i = 0; i < creator.SimulationDays; i++)
-// {
-//     upgradeStrategy.FindAndBuildUpgrades();
-//     writer.WriteCurrentState();
-//     gameService.MoveToNextDay();
-// }
+    var astroCopy = new Astrophysics();
+    for (int j = 0; j < player.Astrophysics.Level; j++)
+    {
+        astroCopy.Upgrade();
+    }
+
+    var astroCost = player.Astrophysics.UpgradeCost;
+    var additionalStepsTakenForAstro = 1;
+    astroCopy.Upgrade();
+    astroCost += astroCopy.UpgradeCost;
+
+    var metalCopy = new MetalMine();
+    for (int j = 0; j < player.Planets[0].MetalMine.Level; j++)
+    {
+        additionalStepsTakenForAstro++;
+        astroCost += metalCopy.UpgradeCost;
+        metalCopy.Upgrade();
+    }
+
+    var crystalMineCopy = new CrystalMine();
+    for (int j = 0; j < player.Planets[0].CrystalMine.Level; j++)
+    {
+        additionalStepsTakenForAstro++;
+        astroCost += crystalMineCopy.UpgradeCost;
+        crystalMineCopy.Upgrade();
+    }
+
+    var deutCopy = new DeuteriumSynthesizer(player.Planets[0].MaxTemperature);
+    for (int j = 0; j < player.Planets[0].DeuteriumSynthesizer.Level; j++)
+    {
+        additionalStepsTakenForAstro++;
+        astroCost += deutCopy.UpgradeCost;
+        deutCopy.Upgrade();
+    }
+
+    upgradeAndIncreases.Add(
+        new(
+            player.Astrophysics,
+            astroCost,
+            productionUpgrade
+        )
+    );
+
+    var upgradeAndRois = new List<(IUpgradable Upgradable, Resources Cost, double Roi)>();
+    foreach (var (upgradable, cost, productionIncrease) in upgradeAndIncreases)
+    {
+        upgradeAndRois.Add(new(upgradable, cost, CalculateRoi(cost, productionIncrease)));
+    }
+
+    var bestUpgrade = upgradeAndRois.MinBy(x => x.Roi);
+    if (player.TrySpendResources(bestUpgrade.Cost))
+    {
+        if (bestUpgrade.Upgradable == player.Astrophysics)
+        {
+            player.Astrophysics.Upgrade();
+            player.Astrophysics.Upgrade();
+
+            var newPlanet = player.Planets.Last();
+            for (int j = 0; j < player.Planets[0].MetalMine.Level; j++)
+            {
+                newPlanet.MetalMine.Upgrade();
+            }
+
+            for (int j = 0; j < player.Planets[0].CrystalMine.Level; j++)
+            {
+                newPlanet.CrystalMine.Upgrade();
+            }
+
+            for (int j = 0; j < player.Planets[0].DeuteriumSynthesizer.Level; j++)
+            {
+                newPlanet.DeuteriumSynthesizer.Upgrade();
+            }
+
+            // remove additional steps for the used upgrades for the mines
+            i += additionalStepsTakenForAstro;
+        }
+        else
+        {
+            bestUpgrade.Upgradable.Upgrade();
+        }
+    }
+    else
+    {
+        player.ProceedToNextDay();
+    }
+}
+
+Console.WriteLine(player.Points);
+Console.ReadLine();
+
+static Resources GetPlayerProduction(Player player, ResourcesModifier modifier)
+{
+    Resources mineProduction = new();
+    foreach (var planet in player.Planets)
+    {
+        mineProduction += planet.MetalMine.TodaysProduction;
+        mineProduction += planet.CrystalMine.TodaysProduction;
+        mineProduction += planet.DeuteriumSynthesizer.TodaysProduction;
+    }
+
+    return mineProduction + (mineProduction * modifier);
+}
+
+static double CalculateRoi(Resources cost, Resources productionIncrease)
+{
+    var weightedCost = (double)cost.ConvertToMetalValue();
+    var weightedIncrease = (double)productionIncrease.ConvertToMetalValue();
+    return weightedCost / weightedIncrease;
+}

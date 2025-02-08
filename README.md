@@ -1,6 +1,5 @@
-## todo
--- identification
--- q-learning
+## Value To Beat in 8000 Steps
+Roi: 670'054'360.798
 
 ## input parameter
 player:
