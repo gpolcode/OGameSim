@@ -6,15 +6,21 @@ namespace OGameSim.Entities
 {
     public class Player
     {
+        private uint? _lastUpdatedAstroLevel;
         private List<Planet> _planets = [];
         public IReadOnlyList<Planet> Planets
         {
             get
             {
-                var missingPlanets = Math.Ceiling(Astrophysics.Level / 2d) + 1 - _planets.Count;
-                for (int i = 0; i < missingPlanets; i++)
+                if (Astrophysics.Level != _lastUpdatedAstroLevel)
                 {
-                    _planets.Add(new(-115));
+                    var missingPlanets = Math.Ceiling(Astrophysics.Level / 2d) + 1 - _planets.Count;
+                    for (int i = 0; i < missingPlanets; i++)
+                    {
+                        _planets.Add(new(-115));
+                    }
+
+                    _lastUpdatedAstroLevel = Astrophysics.Level;
                 }
 
                 return _planets;
