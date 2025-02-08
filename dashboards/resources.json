@@ -18,15 +18,14 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 4,
+  "id": 5,
   "links": [],
   "panels": [
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -38,27 +37,33 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "fillOpacity": 50,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "pointShape": "circle",
-            "pointSize": {
-              "fixed": 8
-            },
-            "pointStrokeWidth": 1,
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
             "scaleDistribution": {
-              "log": 2,
-              "type": "log"
+              "type": "linear"
             },
-            "show": "lines"
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
-          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -83,7 +88,6 @@
         "y": 0
       },
       "id": 1,
-      "maxPerRow": 2,
       "options": {
         "legend": {
           "calcs": [],
@@ -91,10 +95,6 @@
           "placement": "bottom",
           "showLegend": true
         },
-        "mapping": "auto",
-        "series": [
-          {}
-        ],
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -105,140 +105,60 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_name=\"MyDotNetApp\"}",
-          "queryType": "range",
-          "refId": "A"
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "increase(reward[2m]) / 2",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
         }
       ],
-      "title": "Metal",
+      "title": "Reward",
       "transformations": [
         {
-          "id": "extractFields",
+          "id": "organize",
           "options": {
-            "delimiter": ",",
-            "format": "json",
-            "jsonPaths": [],
-            "source": "labels"
-          }
-        },
-        {
-          "id": "filterByValue",
-          "options": {
-            "filters": [
-              {
-                "config": {
-                  "id": "equal",
-                  "options": {
-                    "value": "MetalMine"
-                  }
-                },
-                "fieldName": "resourceType"
-              }
-            ],
-            "match": "all",
-            "type": "include"
-          }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "TraceId",
-                "day",
-                "level"
-              ]
-            }
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "level"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "day"
-              }
-            ],
-            "fields": {}
-          }
-        },
-        {
-          "id": "partitionByValues",
-          "options": {
-            "fields": [
-              "TraceId"
-            ],
-            "keepFields": false,
-            "naming": {
-              "asLabels": false
-            }
+            "excludeByName": {
+              "count": false,
+              "xMax": false,
+              "yLayout": true,
+              "yMax": true,
+              "yMin {instance=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", job=\"OGameSim\", service_instance_id=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", service_name=\"OGameSim\"}": true
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {}
           }
         }
       ],
-      "type": "xychart"
+      "type": "timeseries"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 50,
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "pointShape": "circle",
-            "pointSize": {
-              "fixed": 8
-            },
-            "pointStrokeWidth": 1,
             "scaleDistribution": {
-              "log": 2,
-              "type": "log"
-            },
-            "show": "lines"
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
+              "type": "linear"
+            }
           }
         },
         "overrides": []
@@ -249,444 +169,374 @@
         "x": 12,
         "y": 0
       },
-      "id": 2,
-      "maxPerRow": 2,
+      "id": 4,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "size",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "size",
+            "scale": {
+              "log": 2,
+              "type": "log"
+            },
+            "value": ""
+          }
         },
-        "mapping": "auto",
-        "series": [
-          {}
-        ],
+        "cellGap": 1,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "Spectral",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
         "tooltip": {
-          "hideZeros": false,
           "mode": "single",
-          "sort": "none"
+          "showColorScale": false,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "direction": "backward",
+          "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "{service_name=\"MyDotNetApp\"}",
-          "queryType": "range",
-          "refId": "A"
+          "exemplar": false,
+          "expr": "learning_rate",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
         }
       ],
-      "title": "Crystal",
+      "title": "Learning Rate",
       "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "format": "json",
-            "jsonPaths": [],
-            "source": "labels"
-          }
-        },
         {
           "id": "filterByValue",
           "options": {
             "filters": [
               {
                 "config": {
-                  "id": "equal",
+                  "id": "notEqual",
                   "options": {
-                    "value": "CrystalMine"
+                    "value": "2"
                   }
                 },
-                "fieldName": "resourceType"
+                "fieldName": "yLayout"
               }
             ],
-            "match": "all",
+            "match": "any",
             "type": "include"
           }
         },
         {
-          "id": "filterFieldsByName",
+          "id": "organize",
           "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "TraceId",
-                "day",
-                "level"
-              ]
-            }
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "level"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "day"
-              }
-            ],
-            "fields": {}
-          }
-        },
-        {
-          "id": "partitionByValues",
-          "options": {
-            "fields": [
-              "TraceId"
-            ],
-            "keepFields": false,
-            "naming": {
-              "asLabels": false
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "yMin {__name__=\"learning_rate\", instance=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", job=\"OGameSim\", service_instance_id=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", service_name=\"OGameSim\"}": "yMin",
+              "yMin {__name__=\"learning_rate\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": "yMin",
+              "yMin {__name__=\"reward\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": "yMin"
             }
           }
         }
       ],
-      "type": "xychart"
+      "type": "heatmap"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 50,
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "pointShape": "circle",
-            "pointSize": {
-              "fixed": 8
-            },
-            "pointStrokeWidth": 1,
             "scaleDistribution": {
-              "log": 2,
-              "type": "log"
-            },
-            "show": "lines"
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
+              "type": "linear"
+            }
           }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 17,
+        "h": 13,
         "w": 12,
         "x": 0,
         "y": 13
       },
-      "id": 4,
-      "maxPerRow": 2,
+      "id": 2,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "size",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "size",
+            "scale": {
+              "log": 2,
+              "type": "log"
+            },
+            "value": ""
+          }
         },
-        "mapping": "auto",
-        "series": [
-          {}
-        ],
+        "cellGap": 1,
+        "color": {
+          "exponent": 2,
+          "fill": "dark-blue",
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "Spectral",
+          "steps": 128
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 110
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
         "tooltip": {
-          "hideZeros": false,
           "mode": "single",
-          "sort": "none"
+          "showColorScale": false,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "max": "4000000000",
+          "reverse": false
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_name=\"MyDotNetApp\"}",
-          "queryType": "range",
-          "refId": "A"
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "loss",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
         }
       ],
-      "title": "Points",
+      "title": "Loss",
       "transformations": [
         {
-          "id": "extractFields",
+          "id": "organize",
           "options": {
-            "delimiter": ",",
-            "format": "json",
-            "jsonPaths": [],
-            "source": "labels"
-          }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "TraceId",
-                "day",
-                "points"
-              ]
-            }
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "points"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "day"
-              }
-            ],
-            "fields": {}
-          }
-        },
-        {
-          "id": "partitionByValues",
-          "options": {
-            "fields": [
-              "TraceId"
-            ],
-            "keepFields": false,
-            "naming": {
-              "asLabels": false
+            "excludeByName": {
+              "count": false,
+              "xMax": false,
+              "yLayout": false,
+              "yMax": false,
+              "yMin {__name__=\"loss\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": false
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "yMin {__name__=\"loss\", instance=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", job=\"OGameSim\", service_instance_id=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", service_name=\"OGameSim\"}": "yMin",
+              "yMin {__name__=\"loss\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": "yMin",
+              "yMin {__name__=\"reward\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": "yMin"
             }
           }
         }
       ],
-      "type": "xychart"
+      "type": "heatmap"
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 50,
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "pointShape": "circle",
-            "pointSize": {
-              "fixed": 8
-            },
-            "pointStrokeWidth": 1,
             "scaleDistribution": {
-              "log": 2,
-              "type": "log"
-            },
-            "show": "lines"
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
+              "type": "linear"
+            }
           }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 17,
+        "h": 13,
         "w": 12,
         "x": 12,
         "y": 13
       },
-      "id": 3,
-      "maxPerRow": 2,
+      "id": 5,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "calculate": false,
+        "calculation": {
+          "xBuckets": {
+            "mode": "size",
+            "value": ""
+          },
+          "yBuckets": {
+            "mode": "size",
+            "scale": {
+              "log": 2,
+              "type": "log"
+            },
+            "value": ""
+          }
         },
-        "mapping": "auto",
-        "series": [
-          {}
-        ],
+        "cellGap": 1,
+        "color": {
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "mode": "scheme",
+          "reverse": false,
+          "scale": "exponential",
+          "scheme": "Spectral",
+          "steps": 64
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
         "tooltip": {
-          "hideZeros": false,
           "mode": "single",
-          "sort": "none"
+          "showColorScale": false,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "direction": "backward",
-          "editorMode": "builder",
-          "expr": "{service_name=\"MyDotNetApp\"}",
-          "queryType": "range",
-          "refId": "A"
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "epsilon",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
         }
       ],
-      "title": "Deut",
+      "title": "Epsilon",
       "transformations": [
         {
-          "id": "extractFields",
+          "id": "organize",
           "options": {
-            "delimiter": ",",
-            "format": "json",
-            "jsonPaths": [],
-            "source": "labels"
-          }
-        },
-        {
-          "id": "filterByValue",
-          "options": {
-            "filters": [
-              {
-                "config": {
-                  "id": "equal",
-                  "options": {
-                    "value": "DeuteriumSynthesizer"
-                  }
-                },
-                "fieldName": "resourceType"
-              }
-            ],
-            "match": "all",
-            "type": "include"
-          }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "TraceId",
-                "day",
-                "level"
-              ]
-            }
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "level"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "day"
-              }
-            ],
-            "fields": {}
-          }
-        },
-        {
-          "id": "partitionByValues",
-          "options": {
-            "fields": [
-              "TraceId"
-            ],
-            "keepFields": false,
-            "naming": {
-              "asLabels": false
+            "excludeByName": {
+              "count": false,
+              "xMax": false,
+              "yLayout": false,
+              "yMax": false,
+              "yMin {__name__=\"epsilon\", instance=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", job=\"OGameSim\", service_instance_id=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", service_name=\"OGameSim\"}": false,
+              "yMin {__name__=\"loss\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": false
+            },
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "yMin {__name__=\"epsilon\", instance=\"726549ec-4f76-4d1a-8858-f7a7aaacf4bc\", job=\"OGameSim\", service_instance_id=\"726549ec-4f76-4d1a-8858-f7a7aaacf4bc\", service_name=\"OGameSim\"}": "yMin",
+              "yMin {__name__=\"epsilon\", instance=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", job=\"OGameSim\", service_instance_id=\"7872eea9-27e6-4aa0-a565-434e4a7f61c0\", service_name=\"OGameSim\"}": "yMin",
+              "yMin {__name__=\"loss\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": "yMin",
+              "yMin {__name__=\"reward\", instance=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", job=\"OGameSim\", service_instance_id=\"96dc9065-cba6-4b79-bed4-ef4fc9c708de\", service_name=\"OGameSim\"}": "yMin"
             }
           }
         }
       ],
-      "type": "xychart"
+      "type": "heatmap"
     }
   ],
   "preload": false,
-  "refresh": "",
+  "refresh": "10s",
   "schemaVersion": 40,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Applied upgrades",
-  "uid": "bec2vgfhnvw8wc",
-  "version": 15,
+  "title": "Reward over time",
+  "uid": "cecdkxdled5oga",
+  "version": 25,
   "weekStart": ""
 }
