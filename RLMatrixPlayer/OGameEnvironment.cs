@@ -43,6 +43,7 @@ public sealed class OGameEnvironment : IEnvironmentAsync<float[]>
 
         if (_stepCounter > _maxSteps)
         {
+            RLMatrixPlayer.Meters.UpdatePoints(player.Points);
             return Task.FromResult((0f, true));
         }
 
