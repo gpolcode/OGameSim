@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Tests
 {
-    public class DeuteriumSynthesizerTests
+    public sealed class DeuteriumSynthesizerTests
     {
         [Theory]
         [InlineData(0, 0, 120)]

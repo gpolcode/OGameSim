@@ -3,14 +3,14 @@ using Xunit;
 
 namespace Tests
 {
-    public class PlasmaTechnologyTests
+    public sealed class PlasmaTechnologyTests
     {
         [Theory]
-        [InlineData(0, 1, 1, 1)]
-        [InlineData(1, 1.01, 1.0066, 1.0033)]
-        [InlineData(9, 1.09, 1.0594, 1.0297)]
-        [InlineData(15, 1.15, 1.099, 1.0495)]
-        [InlineData(20, 1.2, 1.132, 1.066)]
+        [InlineData(0, 0, 0, 0)]
+        [InlineData(1, 0.01, 0.0066, 0.0033)]
+        [InlineData(9, 0.09, 0.0594, 0.0297)]
+        [InlineData(15, 0.15, 0.099, 0.0495)]
+        [InlineData(20, 0.2, 0.132, 0.066)]
         public void Plasma_should_modify(
             uint level,
             decimal metal,
@@ -35,10 +35,10 @@ namespace Tests
         }
 
         [Theory]
-        [InlineData(0, 1.01, 1.0066, 1.0033)]
-        [InlineData(8, 1.09, 1.0594, 1.0297)]
-        [InlineData(14, 1.15, 1.099, 1.0495)]
-        [InlineData(19, 1.2, 1.132, 1.066)]
+        [InlineData(0, 0.01, 0.0066, 0.0033)]
+        [InlineData(8, 0.09, 0.0594, 0.0297)]
+        [InlineData(14, 0.15, 0.099, 0.0495)]
+        [InlineData(19, 0.2, 0.132, 0.066)]
         public void Plasma_modifier_should_increase(
             uint level,
             decimal metal,

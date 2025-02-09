@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Tests
 {
-    public class AstrophysicsTests
+    public sealed class AstrophysicsTests
     {
         [Theory]
         [InlineData(0, 4000, 8000, 4000)]

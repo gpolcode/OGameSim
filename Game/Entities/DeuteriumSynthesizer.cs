@@ -3,7 +3,7 @@ using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
-    public class DeuteriumSynthesizer(int planetMaxTemperature) : Mine(new())
+    public sealed class DeuteriumSynthesizer(int planetMaxTemperature) : Mine(new())
     {
         private readonly int _planetAverageTemperature = planetMaxTemperature - 20;
 

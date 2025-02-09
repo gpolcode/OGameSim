@@ -153,7 +153,7 @@ class DeepQNetwork : Module<Tensor, Tensor>
     }
 }
 
-public class Program
+public sealed class Program
 {
     static void Main()
     {

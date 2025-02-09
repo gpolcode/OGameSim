@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Tests
 {
-    public class ResourcesTests
+    public sealed class ResourcesTests
     {
         [Theory]
         [InlineData(10, 0, 0, 20, 0, 0)]

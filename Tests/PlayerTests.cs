@@ -1,9 +1,10 @@
+using System;
 using OGameSim.Entities;
 using Xunit;
 
 namespace Tests
 {
-    public class PlayerTests
+    public sealed class PlayerTests
     {
         [Theory]
         [InlineData(0, 1)]
@@ -51,17 +52,33 @@ namespace Tests
         public void Player_should_gain_resources()
         {
             // Setup
+            var expectedMetal = 792m;
             var subject = new Player();
+            subject.Planets[0].MetalMine.Upgrade();
 
             // Act
-            subject.Planets[0].DeuteriumSynthesizer.Upgrade();
             subject.ProceedToNextDay();
             var resources = subject.Resources;
 
             // Assert
-            Assert.Equal(1440m, resources.Metal);
-            Assert.Equal(720m, resources.Crystal);
-            Assert.Equal(960m, resources.Deuterium);
+            Assert.Equal(expectedMetal, resources.Metal);
+        }
+
+        [Fact]
+        public void Player_should_gain_modified_resources()
+        {
+            // Setup
+            var expectedMetal = Math.Floor(792m * 1.01m);
+            var subject = new Player();
+            subject.Planets[0].MetalMine.Upgrade();
+            subject.PlasmaTechnology.Upgrade();
+
+            // Act
+            subject.ProceedToNextDay();
+            var resources = subject.Resources;
+
+            // Assert
+            Assert.Equal(expectedMetal, resources.Metal);
         }
 
         [Fact]

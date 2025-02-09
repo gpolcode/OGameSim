@@ -3,7 +3,7 @@ using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
-    public class CrystalMine : Mine
+    public sealed class CrystalMine : Mine
     {
         public CrystalMine()
             : base(new(0, 15 * 24, 0)) { }

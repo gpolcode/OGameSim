@@ -3,7 +3,7 @@ using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
-    public class Astrophysics : IUpgradable
+    public sealed class Astrophysics : IUpgradable
     {
         public Astrophysics()
         {

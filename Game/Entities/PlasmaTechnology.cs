@@ -3,7 +3,7 @@ using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
-    public class PlasmaTechnology : IUpgradable
+    public sealed class PlasmaTechnology : IUpgradable
     {
         public PlasmaTechnology()
         {
@@ -27,11 +27,7 @@ namespace OGameSim.Entities
 
         private ResourcesModifier CalculateModifier(uint level)
         {
-            return new(
-                1 + (level * 1m / 100),
-                1 + (level * 0.66m / 100),
-                1 + (level * 0.33m / 100)
-            );
+            return new(level * 1m / 100, level * 0.66m / 100, level * 0.33m / 100);
         }
 
         private void SetUpgradeCost()

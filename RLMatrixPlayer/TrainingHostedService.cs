@@ -7,7 +7,7 @@ using Microsoft.Extensions.Hosting;
 using RLMatrix;
 using RLMatrix.Agents.Common;
 
-public class TrainingHostedService : IHostedService
+public sealed class TrainingHostedService : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {

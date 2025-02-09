@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Tests
 {
-    public class CrystalMineTests
+    public sealed class CrystalMineTests
     {
         [Theory]
         [InlineData(0, 360)]

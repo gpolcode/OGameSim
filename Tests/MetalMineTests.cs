@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Tests
 {
-    public class MetalMineTests
+    public sealed class MetalMineTests
     {
         [Theory]
         [InlineData(0, 720)]

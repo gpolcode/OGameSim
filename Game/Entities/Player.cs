@@ -4,7 +4,7 @@ using OGameSim.Production;
 
 namespace OGameSim.Entities
 {
-    public class Player
+    public sealed class Player
     {
         private uint? _lastUpdatedAstroLevel;
         private List<Planet> _planets = [];
@@ -68,9 +68,15 @@ namespace OGameSim.Entities
                 mineProduction += planet.DeuteriumSynthesizer.TodaysProduction;
             }
 
-            var plasmaTechnologyBonus = mineProduction * PlasmaTechnology.Modifier;
+            Resources modifierProduction = new();
+            var modifiers = new ResourcesModifier[] { PlasmaTechnology.Modifier };
+            foreach (var modifier in modifiers)
+            {
+                modifierProduction += mineProduction * modifier;
+            }
+
             AddResources(mineProduction);
-            AddResources(plasmaTechnologyBonus);
+            AddResources(modifierProduction);
         }
     }
 }
