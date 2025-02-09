@@ -1,5 +1,5 @@
 ## Value To Beat in 8000 Steps
-Roi: 670'054'360.798
+Roi: 266'316'720.384
 
 ## input parameter
 player:

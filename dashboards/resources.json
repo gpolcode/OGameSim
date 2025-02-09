@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 5,
+  "id": 4,
   "links": [],
   "panels": [
     {
@@ -818,7 +818,7 @@
                 }
               },
               "right": {
-                "fixed": "670054360"
+                "fixed": "266316720"
               }
             },
             "mode": "binary",
@@ -840,13 +840,13 @@
     "list": []
   },
   "time": {
-    "from": "2025-02-09T01:40:47.455Z",
-    "to": "2025-02-09T09:16:09.999Z"
+    "from": "now-15m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Reward over time",
-  "uid": "cecdkxdled5oga",
-  "version": 38,
+  "title": "Training",
+  "uid": "fecjk6smm03k0b",
+  "version": 7,
   "weekStart": ""
 }
