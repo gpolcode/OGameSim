@@ -5,15 +5,15 @@ Roi: 670'054'360.798
 player:
 current metal, current crystal, current deut
 
+astro:
+level
+metal upgrade cost, crystal upgrade cost, deut upgrade cost
+
 plasma:
 level
 metal upgrade cost, crystal upgrade cost, deut upgrade cost
 production [metal, crystal, deut]
 upgraded production [metal, crystal, deut]
-
-astro:
-level
-metal upgrade cost, crystal upgrade cost, deut upgrade cost
 
 20x
 n-planet (all zero if unresearched)
