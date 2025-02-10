@@ -46,12 +46,4 @@ n-planet crystal upgrade
 n-planet deut upgrade
 
 ## termination
-random 8000-12000 days
-
-## rewards
-positives:
-- points 1:1
-
-negative:
-- action from unavailable planet -5% of points
-- action with to high of a cost -5% of points
+random 8000days
