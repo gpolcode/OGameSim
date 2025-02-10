@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 
 import gymnasium as gym
+import ogame_env
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,11 +13,6 @@ import torch.optim as optim
 import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-
-gym.register(
-    id="gymnasium_env/GridWorld-v0",
-    entry_point=GridWorldEnv,
-)
 
 @dataclass
 class Args:
@@ -38,7 +34,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "CartPole-v1"
+    env_id: str = "ogame_env/GridWorld-v0"
     """the id of the environment"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""

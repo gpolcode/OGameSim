@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Output Files
 .output/
+pyTorchPlayer/runs/*
