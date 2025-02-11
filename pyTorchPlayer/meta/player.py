@@ -1,9 +1,9 @@
 from pythonnet import load
 
-load("coreclr", runtime_config="/home/elsahr/ogamesim/runtimeconfig.json")
+load("coreclr", runtime_config="/home/elsahr/pyTorchPlayer/game/runtimeconfig.json")
 
 import clr
-clr.AddReference("/home/elsahr/ogamesim/Game.dll")
+clr.AddReference("/home/elsahr/pyTorchPlayer/game/Game.dll")
 
 from OGameSim.Entities import *
 from OGameSim.Production import *
