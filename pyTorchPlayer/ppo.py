@@ -5,7 +5,6 @@ import time
 from dataclasses import dataclass
 
 import gymnasium as gym
-import ogame_env
 import numpy as np
 import torch
 import torch.nn as nn
@@ -24,23 +23,23 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
+    track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
+    wandb_project_name: str = "my-awesome-project"
     """the wandb's project name"""
-    wandb_entity: str = None
+    wandb_entity: str = "gpol-none"
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "ogame_env/GridWorld-v0"
+    env_id: str = "CartPole-v1"
     """the id of the environment"""
-    total_timesteps: int = 500000
+    total_timesteps: int = 5000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 4
+    num_envs: int = 30
     """the number of parallel game environments"""
     num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
