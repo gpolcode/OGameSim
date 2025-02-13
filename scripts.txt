@@ -28,3 +28,11 @@ https://github.com/openai/gym/wiki/Table-of-environments
 https://rocm.docs.amd.com/projects/radeon/en/latest/docs/install/wsl/install-pytorch.html
 https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
 https://docs.cleanrl.dev/advanced/resume-training/?h=save#resume-training_1
+
+SPS Performance per envs:
+1000: 43000
+2000: 46000
+4000: 60000
+8000: 60000
+16000: 56000
+64000: 22000
