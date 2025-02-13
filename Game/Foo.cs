@@ -1,12 +1,11 @@
 using System;
 using OGameSim.Entities;
-using OGameSim.Production;
 
 namespace OGameSim.Production
 {
     public static class Foo
     {
-        public static float ApplyAction(Player player, int action)
+        public static float ApplyAction(Player player, long action)
         {
             float Penalty()
             {
@@ -53,63 +52,64 @@ namespace OGameSim.Production
             return reward;
         }
 
-        public static void UpdateState(Player player, float[] state)
+        public unsafe static void UpdateState(Player player, IntPtr statePointer)
         {
-            var currentIndex = 0;
+            var state = new Span<double>(statePointer.ToPointer(), 617);
 
-            void SetStateValue(float value)
+            var currentIndex = 0;
+            void SetStateValue(float value, Span<double> state)
             {
                 state[currentIndex] = value;
                 currentIndex++;
             }
 
-            void AddResources(Resources resources)
+            void AddResources(Resources resources, Span<double> state)
             {
-                SetStateValue(resources.Metal);
-                SetStateValue(resources.Crystal);
-                SetStateValue(resources.Deuterium);
+                SetStateValue(resources.Metal, state);
+                SetStateValue(resources.Crystal, state);
+                SetStateValue(resources.Deuterium, state);
             }
 
-            void AddResourcesModifier(ResourcesModifier resourcesModifier)
+            void AddResourcesModifier(ResourcesModifier resourcesModifier, Span<double> state)
             {
-                SetStateValue((float)resourcesModifier.Metal);
-                SetStateValue((float)resourcesModifier.Crystal);
-                SetStateValue((float)resourcesModifier.Deuterium);
+                SetStateValue((float)resourcesModifier.Metal, state);
+                SetStateValue((float)resourcesModifier.Crystal, state);
+                SetStateValue((float)resourcesModifier.Deuterium, state);
             }
 
             // Player
-            AddResources(player.Resources);
+            AddResources(player.Resources, state);
 
             // Astro
-            SetStateValue(player.Astrophysics.Level);
-            AddResources(player.Astrophysics.UpgradeCost);
+            SetStateValue(player.Astrophysics.Level, state);
+            AddResources(player.Astrophysics.UpgradeCost, state);
 
             // Plasma
-            SetStateValue(player.PlasmaTechnology.Level);
-            AddResources(player.PlasmaTechnology.UpgradeCost);
-            AddResourcesModifier(player.PlasmaTechnology.Modifier);
-            AddResourcesModifier(player.PlasmaTechnology.UpgradedModifier);
+            SetStateValue(player.PlasmaTechnology.Level, state);
+            AddResources(player.PlasmaTechnology.UpgradeCost, state);
+            AddResourcesModifier(player.PlasmaTechnology.Modifier, state);
+            AddResourcesModifier(player.PlasmaTechnology.UpgradedModifier, state);
 
             // Planets
             foreach (var planet in player.Planets)
             {
                 // Metal
-                SetStateValue(planet.MetalMine.Level);
-                AddResources(planet.MetalMine.UpgradeCost);
-                AddResources(planet.MetalMine.TodaysProduction);
-                AddResources(planet.MetalMine.UpgradeIncreasePerDay);
+                SetStateValue(planet.MetalMine.Level, state);
+                AddResources(planet.MetalMine.UpgradeCost, state);
+                AddResources(planet.MetalMine.TodaysProduction, state);
+                AddResources(planet.MetalMine.UpgradeIncreasePerDay, state);
 
                 // Crystal
-                SetStateValue(planet.CrystalMine.Level);
-                AddResources(planet.CrystalMine.UpgradeCost);
-                AddResources(planet.CrystalMine.TodaysProduction);
-                AddResources(planet.CrystalMine.UpgradeIncreasePerDay);
+                SetStateValue(planet.CrystalMine.Level, state);
+                AddResources(planet.CrystalMine.UpgradeCost, state);
+                AddResources(planet.CrystalMine.TodaysProduction, state);
+                AddResources(planet.CrystalMine.UpgradeIncreasePerDay, state);
 
                 // Deut
-                SetStateValue(planet.DeuteriumSynthesizer.Level);
-                AddResources(planet.DeuteriumSynthesizer.UpgradeCost);
-                AddResources(planet.DeuteriumSynthesizer.TodaysProduction);
-                AddResources(planet.DeuteriumSynthesizer.UpgradeIncreasePerDay);
+                SetStateValue(planet.DeuteriumSynthesizer.Level, state);
+                AddResources(planet.DeuteriumSynthesizer.UpgradeCost, state);
+                AddResources(planet.DeuteriumSynthesizer.TodaysProduction, state);
+                AddResources(planet.DeuteriumSynthesizer.UpgradeIncreasePerDay, state);
             }
         }
     }

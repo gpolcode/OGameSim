@@ -18,6 +18,9 @@ clr.AddReference("/home/elsahr/ogamesim/pyTorchPlayer/game/Game.dll")
 from OGameSim.Entities import *
 from OGameSim.Production import *
 
+import ctypes
+from System import IntPtr
+
 class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
     stepCounter = 0
     maxSteps = 8000
@@ -28,25 +31,35 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
     def __init__(self, render_mode: Optional[str] = None):
         self.player = Player()
+        self.state = np.zeros(617)
+        self.updateState()
+
         self.action_space = spaces.Discrete(63)
         self.observation_space = spaces.Box(low=0.0, high=np.full((617,), np.inf), shape=(617,), dtype=np.float64)
 
     def step(self, action):
-        err_msg = f"{action!r} ({type(action)}) invalid"
-        assert self.action_space.contains(action), err_msg
-        assert self.state is not None, "Call reset before using step method."
-        
-        reward = Foo.ApplyAction(self.player, action)
-        Foo.UpdateState(self.player, self.state)
+        reward = Foo.ApplyAction(self.player, action.item())
+        self.updateState()
 
         self.stepCounter += 1
 
         terminated = self.stepCounter > self.maxSteps
+        infos = {}
 
         if terminated:
+            infos = {
+                "final_info" : [
+                    {
+                        "episode" : {
+                            "r" : self.player.Points,
+                            "l" : self.stepCounter
+                        }
+                    }
+                ]
+            }
             reward = 0.0
 
-        return self.state, reward, terminated, False, {}
+        return self.state, reward, terminated, False, infos
 
     def reset(
         self,
@@ -55,9 +68,16 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         options: Optional[dict] = None,
     ):
         super().reset(seed=seed)
-        self.player = Player()
         self.stepCounter = 0
-        self.state = np.zeros(617)
-        Foo.UpdateState(self.player, self.state)
+        self.player = Player()
+        self.state.fill(0)
+        self.updateState()
 
         return self.state, {}
+
+    def updateState(self):
+        # Convert to .NET IntPtr
+        ptr = self.state.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        net_ptr = IntPtr(ctypes.addressof(ptr.contents))
+
+        Foo.UpdateState(self.player, net_ptr)
