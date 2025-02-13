@@ -65,7 +65,7 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
+    ent_coef: float = 0.99
     """coefficient of the entropy"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -228,8 +228,9 @@ if __name__ == "__main__":
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
             if "points" in infos:
-                print(infos["points"])
-                writer.add_scalar("charts/points", infos["points"], global_step)
+                writer.add_scalar("charts/points-mean", torch.from_numpy(infos["points"]).mean(), global_step)
+                writer.add_scalar("charts/points-max", torch.from_numpy(infos["points"]).max(), global_step)
+                writer.add_scalar("charts/points-90th", torch.from_numpy(infos["points"]).quantile(0.9), global_step)
 
         # bootstrap value if not done
         with torch.no_grad():
