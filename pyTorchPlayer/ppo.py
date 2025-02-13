@@ -41,7 +41,7 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "ogame_env/GridWorld-v0"
     """the id of the environment"""
-    total_timesteps: int = 50000000
+    total_timesteps: int = 5184000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
