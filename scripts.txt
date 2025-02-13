@@ -27,5 +27,4 @@ https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy
 https://github.com/openai/gym/wiki/Table-of-environments
 https://rocm.docs.amd.com/projects/radeon/en/latest/docs/install/wsl/install-pytorch.html
 https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
-
-pip install -e .
+https://docs.cleanrl.dev/advanced/resume-training/?h=save#resume-training_1

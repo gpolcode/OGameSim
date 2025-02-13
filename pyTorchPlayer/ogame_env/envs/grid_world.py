@@ -48,14 +48,7 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
         if terminated:
             infos = {
-                "final_info" : [
-                    {
-                        "episode" : {
-                            "r" : self.player.Points,
-                            "l" : self.stepCounter
-                        }
-                    }
-                ]
+                "points" : float(self.player.Points.ToString())
             }
             reward = 0.0
 
