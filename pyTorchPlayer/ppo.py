@@ -3,6 +3,7 @@ import os
 import random
 import time
 from dataclasses import dataclass
+import uuid
 
 import gymnasium as gym
 import ogame_env
@@ -32,6 +33,10 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    checkpoint_frequency: int = 1000
+    """how often a checkpoint should be saved"""
+    load_checkpoint_path: str = None # "/home/elsahr/saved_models/" + '5b98e13e-f171-4498-bf16-a6db9a86b7d7'
+    """name of the checkpoint to load"""
 
     # Algorithm specific arguments
     env_id: str = "ogame_env/GridWorld-v0"
@@ -175,6 +180,13 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
+    # Load checkpoint
+    if args.load_checkpoint_path:
+        print("Load checkpoint")
+        checkpoint = torch.load(args.load_checkpoint_path)
+        agent.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
@@ -183,6 +195,14 @@ if __name__ == "__main__":
     next_done = torch.zeros(args.num_envs).to(device)
 
     for iteration in range(1, args.num_iterations + 1):
+        # Save a checkpoint
+        if iteration % args.checkpoint_frequency == 0:
+            print("Save checkpoint")
+            torch.save({
+                'model_state_dict': agent.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict()
+                }, "/home/elsahr/saved_models/" + str(uuid.uuid4()))
+
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (iteration - 1.0) / args.num_iterations
