@@ -22,14 +22,19 @@ namespace OGameSim.Production
                 deutLevels.Max(), deutLevels.Average(), deutLevels.Min());
         }
 
-        public static float ApplyAction(Player player, long action)
+        public static (float, bool) ApplyAction(Player player, long action)
         {
-            float Penalty()
+            (float, bool) Penalty()
             {
-                return -1;
+                return (-1, false);
             }
 
-            float TryUpgrade(IUpgradable upgradable)
+            (float, bool) Terminate()
+            {
+                return (0, true);
+            }
+
+            (float, bool) TryUpgrade(IUpgradable upgradable)
             {
                 var currentPoints = player.Points;
 
@@ -37,25 +42,25 @@ namespace OGameSim.Production
                 {
                     upgradable.Upgrade();
                     var gainedPoints = (float)(player.Points - currentPoints);
-                    return (float)Math.Log10(gainedPoints + 1);
+                    return ((float)Math.Log10(gainedPoints + 1), false);
                 }
 
-                return Penalty();
+                return Terminate();
             }
 
-            float ProceedToNextDay()
+            (float, bool) ProceedToNextDay()
             {
                 player.ProceedToNextDay();
-                return 1;
+                return (1, false);
             }
 
             var planetIndex = (int)Math.Floor(action / 3d) - 1;
             if (planetIndex > player.Planets.Count - 1)
             {
-                return Penalty();
+                return Terminate();
             }
 
-            var reward = (action, action % 3) switch
+            var result = (action, action % 3) switch
             {
                 (0, _) => ProceedToNextDay(),
                 (1, _) => TryUpgrade(player.Astrophysics),
@@ -66,7 +71,7 @@ namespace OGameSim.Production
                 _ => throw new NotImplementedException(),
             };
 
-            return reward;
+            return result;
         }
 
         public unsafe static void UpdateState(Player player, IntPtr statePointer)

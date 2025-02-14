@@ -38,12 +38,14 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.observation_space = spaces.Box(low=0.0, high=np.full((617,), np.inf), shape=(617,), dtype=np.float64)
 
     def step(self, action):
-        reward = Foo.ApplyAction(self.player, action.item())
+        result = Foo.ApplyAction(self.player, action.item())
+        reward = result.Item1
+        terminated = result.Item2
         self.updateState()
 
         self.stepCounter += 1
 
-        terminated = self.stepCounter > self.maxSteps
+        terminated = terminated or self.stepCounter > self.maxSteps
         infos = {}
 
         if terminated:
