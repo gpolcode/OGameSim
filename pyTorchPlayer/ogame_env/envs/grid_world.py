@@ -51,19 +51,21 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         if terminated:
             stats = Foo.GetPlayerStats(self.player)
             infos = {
-                "episodic_length": float(self.stepCounter),
-                "points" : float(self.player.Points.ToString()),
-                "astrophysics" : float(self.player.Astrophysics.Level),
-                "plasma_technology" : float(self.player.PlasmaTechnology.Level),
-                "metal_max" : float(stats.MetalMax),
-                "metal_mean" : float(stats.MetalAverage),
-                "metal_min" : float(stats.MetalMin),
-                "crystal_max" : float(stats.CrystalMax),
-                "crystal_mean" : float(stats.CrystalAverage),
-                "crystal_min" : float(stats.CrystalMin),
-                "deut_max" : float(stats.DeutMax),
-                "deut_mean" : float(stats.DeutAverage),
-                "deut_min" : float(stats.DeutMin)
+                "final_info": {
+                    "episodic_length": float(self.stepCounter),
+                    "points" : float(self.player.Points.ToString()),
+                    "astrophysics" : float(self.player.Astrophysics.Level),
+                    "plasma_technology" : float(self.player.PlasmaTechnology.Level),
+                    "metal_max" : float(stats.MetalMax),
+                    "metal_mean" : float(stats.MetalAverage),
+                    "metal_min" : float(stats.MetalMin),
+                    "crystal_max" : float(stats.CrystalMax),
+                    "crystal_mean" : float(stats.CrystalAverage),
+                    "crystal_min" : float(stats.CrystalMin),
+                    "deut_max" : float(stats.DeutMax),
+                    "deut_mean" : float(stats.DeutAverage),
+                    "deut_min" : float(stats.DeutMin)
+                }
             }
             reward = 0.0
 
