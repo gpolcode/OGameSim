@@ -47,8 +47,20 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         infos = {}
 
         if terminated:
+            stats = Foo.GetPlayerStats(self.player)
             infos = {
-                "points" : float(self.player.Points.ToString())
+                "points" : float(self.player.Points.ToString()),
+                "astrophysics" : float(self.player.Astrophysics.Level),
+                "plasma_technology" : float(self.player.PlasmaTechnology.Level),
+                "metal_max" : float(stats.MetalMax),
+                "metal_mean" : float(stats.MetalAverage),
+                "metal_min" : float(stats.MetalMin),
+                "crystal_max" : float(stats.CrystalMax),
+                "crystal_mean" : float(stats.CrystalAverage),
+                "crystal_min" : float(stats.CrystalMin),
+                "deut_max" : float(stats.DeutMax),
+                "deut_mean" : float(stats.DeutAverage),
+                "deut_min" : float(stats.DeutMin)
             }
             reward = 0.0
 

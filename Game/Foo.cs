@@ -1,10 +1,27 @@
 using System;
+using System.Linq;
 using OGameSim.Entities;
 
 namespace OGameSim.Production
 {
     public static class Foo
     {
+
+        public record PlayerStats(float MetalMax, float MetalAverage, float MetalMin, float CrystalMax, float CrystalAverage, float CrystalMin, float DeutMax, float DeutAverage, float DeutMin)
+        {
+        }
+
+        public static PlayerStats GetPlayerStats(Player player)
+        {
+            var metalLevels = player.Planets.Select(x => (float)x.MetalMine.Level);
+            var crystalLevels = player.Planets.Select(x => (float)x.CrystalMine.Level);
+            var deutLevels = player.Planets.Select(x => (float)x.DeuteriumSynthesizer.Level);
+
+            return new(metalLevels.Max(), metalLevels.Average(), metalLevels.Min(),
+                crystalLevels.Max(), crystalLevels.Average(), crystalLevels.Min(),
+                deutLevels.Max(), deutLevels.Average(), deutLevels.Min());
+        }
+
         public static float ApplyAction(Player player, long action)
         {
             float Penalty()
