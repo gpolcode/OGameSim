@@ -60,6 +60,12 @@ namespace OGameSim.Entities
         public void ProceedToNextDay()
         {
             Day++;
+            var production = GetTodaysProduction();
+            AddResources(production);
+        }
+
+        public Resources GetTodaysProduction()
+        {
             Resources mineProduction = new();
             foreach (var planet in Planets)
             {
@@ -75,8 +81,7 @@ namespace OGameSim.Entities
                 modifierProduction += mineProduction * modifier;
             }
 
-            AddResources(mineProduction);
-            AddResources(modifierProduction);
+            return mineProduction + modifierProduction;
         }
     }
 }
