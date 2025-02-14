@@ -51,6 +51,7 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         if terminated:
             stats = Foo.GetPlayerStats(self.player)
             infos = {
+                "episodic_length": float(self.stepCounter),
                 "points" : float(self.player.Points.ToString()),
                 "astrophysics" : float(self.player.Astrophysics.Level),
                 "plasma_technology" : float(self.player.PlasmaTechnology.Level),
