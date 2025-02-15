@@ -26,7 +26,7 @@ namespace OGameSim.Production
         {
             (float, bool) Penalty()
             {
-                return (-1, false);
+                return (-0.1f, false);
             }
 
             (float, bool) Terminate()
@@ -45,7 +45,7 @@ namespace OGameSim.Production
                     return ((float)Math.Log10(gainedPoints + 1), false);
                 }
 
-                return Terminate();
+                return Penalty();
             }
 
             (float, bool) ProceedToNextDay()
@@ -57,7 +57,7 @@ namespace OGameSim.Production
             var planetIndex = (int)Math.Floor(action / 3d) - 1;
             if (planetIndex > player.Planets.Count - 1)
             {
-                return Terminate();
+                return Penalty();
             }
 
             var result = (action, action % 3) switch
