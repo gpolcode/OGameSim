@@ -51,7 +51,7 @@ namespace OGameSim.Production
             (float, bool) ProceedToNextDay()
             {
                 player.ProceedToNextDay();
-                return (1, false);
+                return (0, false);
             }
 
             var planetIndex = (int)Math.Floor(action / 3d) - 1;

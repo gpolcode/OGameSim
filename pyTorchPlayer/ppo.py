@@ -41,7 +41,7 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "ogame_env/GridWorld-v0"
     """the id of the environment"""
-    total_timesteps: int = 5184000000
+    total_timesteps: int = 5_000_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
@@ -65,7 +65,7 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
+    ent_coef: float = 0.05
     """coefficient of the entropy"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -106,18 +106,18 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 1024)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 617)),
             nn.Tanh(),
-            layer_init(nn.Linear(1024, 1024)),
+            layer_init(nn.Linear(617, 300)),
             nn.Tanh(),
-            layer_init(nn.Linear(1024, 1), std=1.0),
+            layer_init(nn.Linear(300, 1), std=1.0),
         )
         self.actor = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 1024)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 617)),
             nn.Tanh(),
-            layer_init(nn.Linear(1024, 1024)),
+            layer_init(nn.Linear(617, 300)),
             nn.Tanh(),
-            layer_init(nn.Linear(1024, envs.single_action_space.n), std=0.01),
+            layer_init(nn.Linear(300, envs.single_action_space.n), std=0.01),
         )
 
     def get_value(self, x):
