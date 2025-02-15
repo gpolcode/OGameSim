@@ -37,10 +37,10 @@ class Args:
     """how often a checkpoint should be saved"""
     load_checkpoint_path: str = None # "/home/elsahr/saved_models/" + '5b98e13e-f171-4498-bf16-a6db9a86b7d7'
     """name of the checkpoint to load"""
-
-    # Algorithm specific arguments
     env_id: str = "ogame_env/GridWorld-v0"
     """the id of the environment"""
+
+    # Algorithm specific arguments
     total_timesteps: int = 5_000_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
@@ -65,7 +65,7 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.05
+    ent_coef: float = 0.04
     """coefficient of the entropy"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{args.ent_coef}"
     if args.track:
         import wandb
 
@@ -201,7 +201,7 @@ if __name__ == "__main__":
             torch.save({
                 'model_state_dict': agent.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict()
-                }, "/home/elsahr/saved_models/" + str(uuid.uuid4()))
+                }, f"/home/elsahr/saved_models/{run_name}_{str(iteration)}_{str(uuid.uuid4())}")
 
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -233,29 +233,29 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/episodic_length_mean", torch.from_numpy(info["episodic_length"]).mean(), global_step)
                 writer.add_scalar("charts/episodic_length_min", torch.from_numpy(info["episodic_length"]).min(), global_step)
 
-                writer.add_scalar("charts/points_max", torch.from_numpy(info["points"]).max(), global_step)
-                writer.add_scalar("charts/points_mean", torch.from_numpy(info["points"]).mean(), global_step)
-                writer.add_scalar("charts/points_min", torch.from_numpy(info["points"]).min(), global_step)
+                writer.add_scalar("points/max", torch.from_numpy(info["points"]).max(), global_step)
+                writer.add_scalar("points/mean", torch.from_numpy(info["points"]).mean(), global_step)
+                writer.add_scalar("points/min", torch.from_numpy(info["points"]).min(), global_step)
 
-                writer.add_scalar("charts/astrophysics_max",  torch.from_numpy(info["astrophysics"]).max(), global_step)
-                writer.add_scalar("charts/astrophysics_mean", torch.from_numpy(info["astrophysics"]).mean(), global_step)
-                writer.add_scalar("charts/astrophysics_min",  torch.from_numpy(info["astrophysics"]).min(), global_step)
+                writer.add_scalar("astrophysics/max",  torch.from_numpy(info["astrophysics"]).max(), global_step)
+                writer.add_scalar("astrophysics/mean", torch.from_numpy(info["astrophysics"]).mean(), global_step)
+                writer.add_scalar("astrophysics/min",  torch.from_numpy(info["astrophysics"]).min(), global_step)
                 
-                writer.add_scalar("charts/plasma_technology_max",  torch.from_numpy(info["plasma_technology"]).max(), global_step)
-                writer.add_scalar("charts/plasma_technology_mean", torch.from_numpy(info["plasma_technology"]).mean(), global_step)
-                writer.add_scalar("charts/plasma_technology_min",  torch.from_numpy(info["plasma_technology"]).min(), global_step)
+                writer.add_scalar("plasma_technology/max",  torch.from_numpy(info["plasma_technology"]).max(), global_step)
+                writer.add_scalar("plasma_technology/mean", torch.from_numpy(info["plasma_technology"]).mean(), global_step)
+                writer.add_scalar("plasma_technology/min",  torch.from_numpy(info["plasma_technology"]).min(), global_step)
                 
-                writer.add_scalar("charts/metal_max", torch.from_numpy(info["metal_max"]).mean(), global_step)
-                writer.add_scalar("charts/metal_mean", torch.from_numpy(info["metal_mean"]).mean(), global_step)
-                writer.add_scalar("charts/metal_min", torch.from_numpy(info["metal_min"]).mean(), global_step)
+                writer.add_scalar("metal/max", torch.from_numpy(info["metal_max"]).mean(), global_step)
+                writer.add_scalar("metal/mean", torch.from_numpy(info["metal_mean"]).mean(), global_step)
+                writer.add_scalar("metal/min", torch.from_numpy(info["metal_min"]).mean(), global_step)
                 
-                writer.add_scalar("charts/crystal_max",  torch.from_numpy(info["crystal_max"]).mean(), global_step)
-                writer.add_scalar("charts/crystal_mean", torch.from_numpy(info["crystal_mean"]).mean(), global_step)
-                writer.add_scalar("charts/crystal_min",  torch.from_numpy(info["crystal_min"]).mean(), global_step)
+                writer.add_scalar("crystal/max",  torch.from_numpy(info["crystal_max"]).mean(), global_step)
+                writer.add_scalar("crystal/mean", torch.from_numpy(info["crystal_mean"]).mean(), global_step)
+                writer.add_scalar("crystal/min",  torch.from_numpy(info["crystal_min"]).mean(), global_step)
                 
-                writer.add_scalar("charts/deut_max",  torch.from_numpy(info["deut_max"]).mean(), global_step)
-                writer.add_scalar("charts/deut_mean", torch.from_numpy(info["deut_mean"]).mean(), global_step)
-                writer.add_scalar("charts/deut_min",  torch.from_numpy(info["deut_min"]).mean(), global_step)
+                writer.add_scalar("deut/max",  torch.from_numpy(info["deut_max"]).mean(), global_step)
+                writer.add_scalar("deut/mean", torch.from_numpy(info["deut_mean"]).mean(), global_step)
+                writer.add_scalar("deut/min",  torch.from_numpy(info["deut_min"]).mean(), global_step)
 
         # bootstrap value if not done
         with torch.no_grad():
