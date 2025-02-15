@@ -106,18 +106,18 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 65)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 125)),
             nn.Tanh(),
-            layer_init(nn.Linear(65, 65)),
+            layer_init(nn.Linear(125, 125)),
             nn.Tanh(),
-            layer_init(nn.Linear(65, 1), std=1.0),
+            layer_init(nn.Linear(125, 1), std=1.0),
         )
         self.actor = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 65)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 125)),
             nn.Tanh(),
-            layer_init(nn.Linear(65, 65)),
+            layer_init(nn.Linear(125, 125)),
             nn.Tanh(),
-            layer_init(nn.Linear(65, envs.single_action_space.n), std=0.01),
+            layer_init(nn.Linear(125, envs.single_action_space.n), std=0.01),
         )
 
     def get_value(self, x):

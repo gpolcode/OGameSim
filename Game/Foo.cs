@@ -51,7 +51,7 @@ namespace OGameSim.Production
             (float, bool) ProceedToNextDay()
             {
                 player.ProceedToNextDay();
-                return (0, false);
+                return (0.1f, false);
             }
 
             var planetIndex = (int)Math.Floor(action / 3d) - 1;
@@ -76,7 +76,7 @@ namespace OGameSim.Production
 
         public unsafe static void UpdateState(Player player, IntPtr statePointer)
         {
-            var state = new Span<double>(statePointer.ToPointer(), 65);
+            var state = new Span<double>(statePointer.ToPointer(), 125);
 
             var currentIndex = 0;
             var todaysProduction = player.GetTodaysProduction();
