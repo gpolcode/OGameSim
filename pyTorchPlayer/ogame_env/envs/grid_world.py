@@ -31,11 +31,11 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
 
     def __init__(self, render_mode: Optional[str] = None):
         self.player = Player()
-        self.state = np.zeros(617)
+        self.state = np.zeros(65)
         self.updateState()
 
         self.action_space = spaces.Discrete(63)
-        self.observation_space = spaces.Box(low=0.0, high=np.full((617,), np.inf), shape=(617,), dtype=np.float64)
+        self.observation_space = spaces.Box(low=0.0, high=np.full((65,), np.inf), shape=(65,), dtype=np.float64)
 
     def step(self, action):
         result = Foo.ApplyAction(self.player, action.item())

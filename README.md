@@ -35,6 +35,32 @@ metal upgrade cost, crystal upgrade cost, deut upgrade cost
 production [deut]
 upgraded production [deut]
 
+## input parameter v2
+player:
+current mse
+todays mse prod
+
+astro:
+mse upgrade cost
+
+plasma:
+mse upgrade cost
+upgraded production mse
+
+20x
+n-planet (all zero if unresearched)
+metal:
+mse upgrade cost
+upgraded production mse
+
+crystal:
+mse upgrade cost
+upgraded production mse
+
+deut:
+mse upgrade cost
+upgraded production mse
+
 ## actions
 proceed to next day
 astro upgrade
