@@ -35,37 +35,37 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
     checkpoint_frequency: int = 1000
     """how often a checkpoint should be saved"""
-    load_checkpoint_path: str = None # "/home/elsahr/saved_models/" + '5b98e13e-f171-4498-bf16-a6db9a86b7d7'
+    load_checkpoint_path: str = "/home/elsahr/saved_models/" + '0.04_0.98_0.94_0.3_3000_4ba05211-8211-42f8-ba26-75806c7af321'#None 
     """name of the checkpoint to load"""
     env_id: str = "ogame_env/GridWorld-v0"
     """the id of the environment"""
 
     # Algorithm specific arguments
-    total_timesteps: int = 5_000_000_000
+    total_timesteps: int = 300_000_000
     """total timesteps of the experiments"""
-    learning_rate: float = 3e-4
+    learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
     num_envs: int = 4000
     """the number of parallel game environments"""
-    num_steps: int = 20
+    num_steps: int = 25
     """the number of steps to run in each environment per policy rollout"""
     anneal_lr: bool = True
     """Toggle learning rate annealing for policy and value networks"""
-    gamma: float = 0.98
+    gamma: float = 0.95
     """the discount factor gamma"""
-    gae_lambda: float = 0.97
+    gae_lambda: float = 0.94
     """the lambda for the general advantage estimation"""
     num_minibatches: int = 4
     """the number of mini-batches"""
-    update_epochs: int = 4
+    update_epochs: int = 8
     """the K epochs to update the policy"""
     norm_adv: bool = True
     """Toggles advantages normalization"""
-    clip_coef: float = 0.3
+    clip_coef: float = 0.35
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.04
+    ent_coef: float = 0.1
     """coefficient of the entropy"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -133,10 +133,11 @@ class Agent(nn.Module):
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
+    torch.set_num_threads(24)
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    run_name = f"{args.ent_coef}"
+    run_name = f"{args.ent_coef}_{args.gamma}_{args.gae_lambda}_{args.clip_coef}"
     if args.track:
         import wandb
 
