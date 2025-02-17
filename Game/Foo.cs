@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Frozen;
+using System.Collections.Generic;
 using System.Linq;
 using OGameSim.Entities;
 
@@ -6,9 +8,50 @@ namespace OGameSim.Production
 {
     public static class Foo
     {
+        public record PlayerStats(
+            float MetalMax,
+            float MetalAverage,
+            float MetalMin,
+            float CrystalMax,
+            float CrystalAverage,
+            float CrystalMin,
+            float DeutMax,
+            float DeutAverage,
+            float DeutMin
+        )
+        { }
 
-        public record PlayerStats(float MetalMax, float MetalAverage, float MetalMin, float CrystalMax, float CrystalAverage, float CrystalMin, float DeutMax, float DeutAverage, float DeutMin)
+        public sealed class ExplorationReward
         {
+            public ExplorationReward(float value)
+            {
+                Value = value;
+            }
+
+            public bool Redeemed { get; private set; }
+
+            public bool TryClaim()
+            {
+                if (Redeemed)
+                {
+                    return false;
+                }
+
+                lock (this)
+                {
+                    if (Redeemed)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        Redeemed = true;
+                        return true;
+                    }
+                }
+            }
+
+            public float Value { get; }
         }
 
         public static PlayerStats GetPlayerStats(Player player)
@@ -17,9 +60,44 @@ namespace OGameSim.Production
             var crystalLevels = player.Planets.Select(x => (float)x.CrystalMine.Level);
             var deutLevels = player.Planets.Select(x => (float)x.DeuteriumSynthesizer.Level);
 
-            return new(metalLevels.Max(), metalLevels.Average(), metalLevels.Min(),
-                crystalLevels.Max(), crystalLevels.Average(), crystalLevels.Min(),
-                deutLevels.Max(), deutLevels.Average(), deutLevels.Min());
+            return new(
+                metalLevels.Max(),
+                metalLevels.Average(),
+                metalLevels.Min(),
+                crystalLevels.Max(),
+                crystalLevels.Average(),
+                crystalLevels.Min(),
+                deutLevels.Max(),
+                deutLevels.Average(),
+                deutLevels.Min()
+            );
+        }
+
+        private static readonly FrozenDictionary<decimal, ExplorationReward> _rewards;
+        private const int RewardDistribution = 5_000_000;
+
+        static Foo()
+        {
+            var maxValue = 25f;
+
+            var bucketCount = 300_000_000 / RewardDistribution;
+            var rewards = new Dictionary<decimal, ExplorationReward>();
+
+            for (int i = 0; i < bucketCount; i++)
+            {
+                var points = i * RewardDistribution;
+                var value = maxValue / bucketCount * i;
+                rewards.Add(points, new(value));
+            }
+
+            _rewards = rewards.ToFrozenDictionary();
+        }
+
+        public static float GetExplorationReward(Player player)
+        {
+            var bucket = Math.Floor(player.Points / RewardDistribution) * RewardDistribution;
+            var explorationReward = _rewards[bucket];
+            return explorationReward.TryClaim() ? explorationReward.Value : 0f;
         }
 
         public static (float, bool) ApplyAction(Player player, long action)
@@ -41,8 +119,12 @@ namespace OGameSim.Production
                 if (player.TrySpendResources(upgradable.UpgradeCost))
                 {
                     upgradable.Upgrade();
+
                     var gainedPoints = (float)(player.Points - currentPoints);
-                    return ((float)Math.Log10(gainedPoints + 1), false);
+                    var upgradeReward = (float)Math.Log10(gainedPoints + 1);
+                    var explorationReward = GetExplorationReward(player);
+
+                    return (upgradeReward + explorationReward, false);
                 }
 
                 return Penalty();
@@ -74,7 +156,7 @@ namespace OGameSim.Production
             return result;
         }
 
-        public unsafe static void UpdateState(Player player, IntPtr statePointer)
+        public static unsafe void UpdateState(Player player, IntPtr statePointer)
         {
             var state = new Span<double>(statePointer.ToPointer(), 125);
 
@@ -100,7 +182,11 @@ namespace OGameSim.Production
 
             // Plasma
             AddResources(player.PlasmaTechnology.UpgradeCost, state);
-            AddResources(todaysProduction * (player.PlasmaTechnology.UpgradedModifier - player.PlasmaTechnology.Modifier), state);
+            AddResources(
+                todaysProduction
+                    * (player.PlasmaTechnology.UpgradedModifier - player.PlasmaTechnology.Modifier),
+                state
+            );
 
             // Planets
             foreach (var planet in player.Planets)
