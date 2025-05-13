@@ -1,3 +1,7 @@
+## todo
+- weitere exploration rewards für level
+- https://docs.ray.io/en/latest/tune/examples/pbt_guide.html
+
 ## Value To Beat in 8000 Steps
 Roi: 266'316'720.384
 
