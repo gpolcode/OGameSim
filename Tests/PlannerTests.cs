@@ -2,6 +2,8 @@ using OGameSim.Entities;
 using OGameSim.Production;
 using PlanningPlayer;
 using Xunit;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace Tests
 {
@@ -95,10 +97,67 @@ namespace Tests
             var subject = new Player();
 
             // Act
-            var ex = Record.Exception(() => Planner.EnumerateActions(subject));
+            var ex = Record.Exception(() => Planner.EnumerateActions(subject, 10));
 
             // Assert
             Assert.Null(ex);
+        }
+
+        [Fact]
+        public void Planner_enumerate_actions_should_prune_by_payback()
+        {
+            // Setup
+            var subject = new Player();
+
+            // Act
+            var actions = Planner.EnumerateActions(subject, remainingDays: 0);
+
+            // Assert
+            Assert.Single(actions);
+            Assert.Null(actions[0].Upgradable);
+        }
+
+        [Fact]
+        public void Planner_search_with_beamwidth_should_consider_top_actions()
+        {
+            // Setup
+            var subject = new Player();
+
+            // Act
+            var result = Planner.Search(subject, horizon: 2, beamWidth: 2);
+
+            // Assert
+            Assert.Equal(0.3m, result);
+        }
+
+        [Fact]
+        public void Planner_search_should_be_thread_safe_and_deterministic()
+        {
+            var baseline = Planner.Search(new Player(), horizon: 3, beamWidth: 3);
+
+            var results = new ConcurrentBag<decimal>();
+            Parallel.For(0, 4, _ =>
+            {
+                results.Add(Planner.Search(new Player(), horizon: 3, beamWidth: 3));
+            });
+
+            Assert.All(results, r => Assert.Equal(baseline, r));
+        }
+
+        [Fact]
+        public void Planner_build_key_should_ignore_points()
+        {
+            var p1 = new Player();
+            var p2 = new Player();
+            p2.AddResources(new Resources(1000, 0, 0));
+            p2.TrySpendResources(new Resources(1000, 0, 0));
+
+            var key1 = typeof(Planner).GetMethod("BuildKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                .Invoke(null, new object?[] { p1, 0 }) as string;
+            var key2 = typeof(Planner).GetMethod("BuildKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                .Invoke(null, new object?[] { p2, 0 }) as string;
+
+            Assert.Equal(key1, key2);
         }
     }
 }

@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using OGameSim.Entities;
 using OGameSim.Production;
 
@@ -7,31 +10,41 @@ namespace PlanningPlayer;
 
 public static class Planner
 {
-    public static decimal Search(Player root, int horizon)
+    public static decimal Search(Player root, int horizon, int beamWidth = 5)
     {
         var clone = root.DeepClone();
-        return Evaluate(clone, (int)clone.Day, horizon);
+        var cache = new ConcurrentDictionary<string, decimal>();
+        return Evaluate(clone, (int)clone.Day, horizon, beamWidth, cache);
     }
 
-    internal static decimal Evaluate(Player state, int day, int horizon)
+    internal static decimal Evaluate(Player state, int day, int horizon, int beamWidth, ConcurrentDictionary<string, decimal> cache)
     {
         if (day >= horizon)
             return state.Points;
 
-        var actions = EnumerateActions(state);
-        decimal best = decimal.MinValue;
-        foreach (var action in actions)
+        var key = BuildKey(state, day);
+        return cache.GetOrAdd(key, _ =>
         {
-            var clone = state.DeepClone();
-            Apply(clone, action);
-            var value = Evaluate(clone, day + action.TimeCost, horizon);
-            if (value > best)
-                best = value;
-        }
-        return best;
+            var remaining = horizon - day;
+            var actions = EnumerateActions(state, remaining);
+            var subset = actions.Take(beamWidth).ToList();
+            if (!subset.Any(a => a.Upgradable is null))
+                subset.Add(ActionCandidate.Wait());
+
+            var results = new ConcurrentBag<decimal>();
+            Parallel.ForEach(subset, action =>
+            {
+                var clone = state.DeepClone();
+                Apply(clone, action);
+                var value = Evaluate(clone, day + action.TimeCost, horizon, beamWidth, cache);
+                results.Add(value);
+            });
+
+            return results.Max();
+        });
     }
 
-    internal static List<ActionCandidate> EnumerateActions(Player player)
+    internal static List<ActionCandidate> EnumerateActions(Player player, int remainingDays)
     {
         var list = new List<ActionCandidate>();
         foreach (var planet in player.Planets)
@@ -49,7 +62,10 @@ public static class Planner
 
         list.Add(ActionCandidate.Wait());
 
-        return list.OrderBy(a => CalculateRoi(a.Cost, a.Gain)).ToList();
+        var ordered = list.OrderBy(a => CalculateRoi(a.Cost, a.Gain));
+        return ordered
+            .Where(a => CalculatePayback(a.Cost, a.Gain) <= remainingDays || a.Upgradable is null)
+            .ToList();
     }
 
     internal static void Apply(Player player, ActionCandidate action)
@@ -75,6 +91,31 @@ public static class Planner
         var weightedCost = (double)cost.ConvertToMetalValue();
         var weightedGain = (double)gain.ConvertToMetalValue();
         return weightedCost / weightedGain;
+    }
+
+    internal static double CalculatePayback(Resources cost, Resources gain)
+    {
+        var weightedCost = (double)cost.ConvertToMetalValue();
+        var weightedGain = (double)gain.ConvertToMetalValue();
+        if (weightedGain == 0) return double.PositiveInfinity;
+        return weightedCost / weightedGain;
+    }
+
+    static string BuildKey(Player player, int day)
+    {
+        var sb = new StringBuilder();
+        sb.Append(day).Append('|');
+        var res = player.Resources;
+        sb.Append(res.Metal).Append(',').Append(res.Crystal).Append(',').Append(res.Deuterium).Append('|');
+        sb.Append(player.Astrophysics.Level).Append('|');
+        sb.Append(player.PlasmaTechnology.Level).Append('|');
+        foreach (var planet in player.Planets)
+        {
+            sb.Append(planet.MetalMine.Level).Append(',');
+            sb.Append(planet.CrystalMine.Level).Append(',');
+            sb.Append(planet.DeuteriumSynthesizer.Level).Append(';');
+        }
+        return sb.ToString();
     }
 }
 

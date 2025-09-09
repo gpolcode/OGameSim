@@ -17,7 +17,7 @@ public static class PlayerExtensions
         CopyAstrophysics(player.Astrophysics, clone.Astrophysics);
         CopyPlasmaTechnology(player.PlasmaTechnology, clone.PlasmaTechnology);
 
-        var planetsField = typeof(Player).GetField("_planets", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var planetsField = AccessorCache.GetField(typeof(Player), "_planets")!;
         var originalPlanets = (List<Planet>)planetsField.GetValue(player)!;
         var clonedPlanets = new List<Planet>();
         foreach (var planet in originalPlanets)
@@ -26,7 +26,7 @@ public static class PlayerExtensions
         }
         planetsField.SetValue(clone, clonedPlanets);
 
-        var lastUpdatedField = typeof(Player).GetField("_lastUpdatedAstroLevel", BindingFlags.NonPublic | BindingFlags.Instance);
+        var lastUpdatedField = AccessorCache.GetField(typeof(Player), "_lastUpdatedAstroLevel");
         lastUpdatedField?.SetValue(clone, lastUpdatedField.GetValue(player));
 
         return clone;
@@ -65,24 +65,22 @@ public static class PlayerExtensions
 
     static T GetProperty<T>(object obj, string name)
     {
-        var prop = obj.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
+        var prop = AccessorCache.GetProperty(obj.GetType(), name)!;
         return (T)prop.GetValue(obj)!;
     }
 
     static void SetProperty(object obj, string name, object value)
     {
-        var prop = obj.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
+        var prop = AccessorCache.GetProperty(obj.GetType(), name)!;
         var setter = prop.GetSetMethod(true)!;
         setter.Invoke(obj, new[] { value });
     }
 
     static void CopyProperty(object source, object target, string name)
     {
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
-        var sourceProp = source.GetType().GetProperty(name, flags);
-        var targetProp = target.GetType().GetProperty(name, flags);
+        var sourceProp = AccessorCache.GetProperty(source.GetType(), name);
+        var targetProp = AccessorCache.GetProperty(target.GetType(), name);
 
-        // ignore properties that cannot be copied (missing getter/setter)
         var getter = sourceProp?.GetGetMethod(true);
         var setter = targetProp?.GetSetMethod(true);
         if (getter is null || setter is null)
