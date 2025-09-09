@@ -79,15 +79,19 @@ public static class PlayerExtensions
     static void CopyProperty(object source, object target, string name)
     {
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
-        var prop = source.GetType().GetProperty(name, flags);
-        if (prop is null)
+        var sourceProp = source.GetType().GetProperty(name, flags);
+        var targetProp = target.GetType().GetProperty(name, flags);
+
+        // ignore properties that cannot be copied (missing getter/setter)
+        var getter = sourceProp?.GetGetMethod(true);
+        var setter = targetProp?.GetSetMethod(true);
+        if (getter is null || setter is null)
         {
             return;
         }
-        var value = prop.GetValue(source);
-        var targetProp = target.GetType().GetProperty(name, flags);
-        var setter = targetProp?.GetSetMethod(true);
-        setter?.Invoke(target, new[] { value });
+
+        var value = getter.Invoke(source, null);
+        setter.Invoke(target, new[] { value });
     }
 }
 

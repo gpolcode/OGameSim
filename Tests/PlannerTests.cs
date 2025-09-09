@@ -87,5 +87,18 @@ namespace Tests
             // Assert
             Assert.Equal(subject.Points, result);
         }
+
+        [Fact]
+        public void Planner_enumerate_actions_should_not_throw()
+        {
+            // Setup
+            var subject = new Player();
+
+            // Act
+            var ex = Record.Exception(() => Planner.EnumerateActions(subject));
+
+            // Assert
+            Assert.Null(ex);
+        }
     }
 }
