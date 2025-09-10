@@ -10,11 +10,18 @@ public static class Planner
     public static decimal Search(Player root, int horizon)
     {
         var clone = root.DeepClone();
-        return Evaluate(clone, (int)clone.Day, horizon);
+        int maxDay = (int)clone.Day;
+        return Evaluate(clone, maxDay, horizon, ref maxDay);
     }
 
-    internal static decimal Evaluate(Player state, int day, int horizon)
+    internal static decimal Evaluate(Player state, int day, int horizon, ref int maxDay)
     {
+        if (day > maxDay)
+        {
+            maxDay = day;
+            Console.WriteLine($"Day {maxDay}/{horizon}");
+        }
+
         if (day >= horizon)
             return state.Points;
 
@@ -24,7 +31,7 @@ public static class Planner
         {
             var clone = state.DeepClone();
             Apply(clone, action);
-            var value = Evaluate(clone, day + action.TimeCost, horizon);
+            var value = Evaluate(clone, day + action.TimeCost, horizon, ref maxDay);
             if (value > best)
                 best = value;
         }

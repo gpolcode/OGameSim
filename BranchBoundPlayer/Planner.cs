@@ -13,10 +13,16 @@ public static class Planner
         var stack = new Stack<(Player state, int day)>();
         stack.Push((clone, (int)clone.Day));
         decimal best = decimal.MinValue;
+        var maxDay = (int)clone.Day;
 
         while (stack.Count > 0)
         {
             var (state, day) = stack.Pop();
+            if (day > maxDay)
+            {
+                maxDay = day;
+                Console.WriteLine($"Day {maxDay}/{horizon}");
+            }
             if (day >= horizon)
             {
                 if (state.Points > best) best = state.Points;
