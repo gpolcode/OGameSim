@@ -22,6 +22,7 @@ public static class Planner
             {
                 maxDay = day;
                 Console.WriteLine($"Day {maxDay}/{horizon}");
+                Console.Out.Flush();
             }
             if (day >= horizon)
             {
