@@ -2,6 +2,8 @@ using System.Reflection;
 using MemoizationPlayer;
 using OGameSim.Entities;
 using Xunit;
+using System;
+using System.IO;
 
 public class MemoizationPlayerTests
 {
@@ -30,5 +32,23 @@ public class MemoizationPlayerTests
         var player = new Player();
         var result = Planner.Search(player, 2);
         Assert.Equal(0.300m, result);
+    }
+
+    [Fact]
+    public void Search_PrintsProgressAndResult()
+    {
+        var player = new Player();
+        var original = Console.Out;
+        using var sw = new StringWriter();
+        Console.SetOut(sw);
+
+        var result = Planner.Search(player, 3);
+        Console.WriteLine(result);
+        Console.Out.Flush();
+        Console.SetOut(original);
+
+        var output = sw.ToString();
+        Assert.Contains("Day 3/3", output);
+        Assert.EndsWith(result + Environment.NewLine, output);
     }
 }
