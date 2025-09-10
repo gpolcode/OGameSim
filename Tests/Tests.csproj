@@ -22,6 +22,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Game\Game.csproj" />
     <ProjectReference Include="..\PlanningPlayer\PlanningPlayer.csproj" />
+    <ProjectReference Include="..\MemoizationPlayer\MemoizationPlayer.csproj" />
+    <ProjectReference Include="..\PaybackPruningPlayer\PaybackPruningPlayer.csproj" />
+    <ProjectReference Include="..\BranchBoundPlayer\BranchBoundPlayer.csproj" />
   </ItemGroup>
 
 </Project>

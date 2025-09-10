@@ -3,7 +3,7 @@ using System.Linq;
 using OGameSim.Entities;
 using OGameSim.Production;
 
-namespace PlanningPlayer;
+namespace PaybackPruningPlayer;
 
 public static class Planner
 {
@@ -18,7 +18,7 @@ public static class Planner
         if (day >= horizon)
             return state.Points;
 
-        var actions = EnumerateActions(state);
+        var actions = EnumerateActions(state, horizon - day);
         decimal best = decimal.MinValue;
         foreach (var action in actions)
         {
@@ -31,7 +31,7 @@ public static class Planner
         return best;
     }
 
-    internal static List<ActionCandidate> EnumerateActions(Player player)
+    internal static List<ActionCandidate> EnumerateActions(Player player, int remainingDays)
     {
         var list = new List<ActionCandidate>();
         foreach (var planet in player.Planets)
@@ -49,7 +49,17 @@ public static class Planner
 
         list.Add(ActionCandidate.Wait());
 
-        return list.OrderBy(a => CalculateRoi(a.Cost, a.Gain)).ToList();
+        return list
+            .Where(a => a.Upgradable is null || CalculatePayback(a.Cost, a.Gain) <= remainingDays)
+            .OrderBy(a => CalculateRoi(a.Cost, a.Gain))
+            .ToList();
+    }
+
+    internal static double CalculatePayback(Resources cost, Resources gain)
+    {
+        var weightedCost = (double)cost.ConvertToMetalValue();
+        var weightedGain = (double)gain.ConvertToMetalValue();
+        return weightedGain == 0 ? double.PositiveInfinity : weightedCost / weightedGain;
     }
 
     internal static void Apply(Player player, ActionCandidate action)
@@ -82,4 +92,3 @@ internal readonly record struct ActionCandidate(IUpgradable? Upgradable, Resourc
 {
     public static ActionCandidate Wait() => new(null, new Resources(0,0,0), new Resources(0,0,0), 1);
 }
-

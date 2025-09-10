@@ -3,7 +3,7 @@ using System.Reflection;
 using OGameSim.Entities;
 using OGameSim.Production;
 
-namespace PlanningPlayer;
+namespace PaybackPruningPlayer;
 
 public static class PlayerExtensions
 {

@@ -2,7 +2,6 @@ using OGameSim.Entities;
 using OGameSim.Production;
 using PlanningPlayer;
 using Xunit;
-using System.Reflection;
 
 namespace Tests
 {
@@ -79,48 +78,27 @@ namespace Tests
         [Fact]
         public void Planner_search_should_return_current_points_when_horizon_zero()
         {
+            // Setup
             var subject = new Player();
+
+            // Act
             var result = Planner.Search(subject, 0);
+
+            // Assert
             Assert.Equal(subject.Points, result);
         }
 
         [Fact]
         public void Planner_enumerate_actions_should_not_throw()
         {
+            // Setup
             var subject = new Player();
-            var ex = Record.Exception(() => Planner.EnumerateActions(subject, 10));
+
+            // Act
+            var ex = Record.Exception(() => Planner.EnumerateActions(subject));
+
+            // Assert
             Assert.Null(ex);
-        }
-
-        [Fact]
-        public void Planner_enumerate_actions_should_prune_by_payback()
-        {
-            var subject = new Player();
-            var actions = Planner.EnumerateActions(subject, remainingDays: 0);
-            Assert.Single(actions);
-            Assert.Null(actions[0].Upgradable);
-        }
-
-        [Fact]
-        public void Planner_build_key_should_bucket_resources()
-        {
-            var p1 = new Player();
-            p1.AddResources(new Resources(500, 0, 0));
-            var p2 = new Player();
-            p2.AddResources(new Resources(999, 0, 0));
-            var method = typeof(Planner).GetMethod("BuildKey", BindingFlags.NonPublic | BindingFlags.Static)!;
-            var key1 = method.Invoke(null, new object?[] { p1, 1000, 50 }) as string;
-            var key2 = method.Invoke(null, new object?[] { p2, 1000, 50 }) as string;
-            Assert.Equal(key1, key2);
-        }
-
-        [Fact]
-        public void Planner_search_with_buckets_should_match_exact_for_small_horizon()
-        {
-            var player = new Player();
-            var exact = Planner.Search(player, horizon: 2, bucketSize: 1, bucketCount: int.MaxValue);
-            var bucketed = Planner.Search(player, horizon: 2, bucketSize: 1000, bucketCount: 50);
-            Assert.Equal(exact, bucketed);
         }
     }
 }

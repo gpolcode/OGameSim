@@ -3,7 +3,7 @@ using System.Reflection;
 using OGameSim.Entities;
 using OGameSim.Production;
 
-namespace PlanningPlayer;
+namespace MemoizationPlayer;
 
 public static class PlayerExtensions
 {

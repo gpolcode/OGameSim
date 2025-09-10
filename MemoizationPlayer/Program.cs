@@ -1,5 +1,5 @@
 using OGameSim.Entities;
-using PlanningPlayer;
+using MemoizationPlayer;
 
 var player = new Player();
 var result = Planner.Search(player, 10);

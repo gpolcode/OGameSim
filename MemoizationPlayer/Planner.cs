@@ -3,20 +3,25 @@ using System.Linq;
 using OGameSim.Entities;
 using OGameSim.Production;
 
-namespace PlanningPlayer;
+namespace MemoizationPlayer;
 
 public static class Planner
 {
     public static decimal Search(Player root, int horizon)
     {
         var clone = root.DeepClone();
-        return Evaluate(clone, (int)clone.Day, horizon);
+        var cache = new Dictionary<string, decimal>();
+        return Evaluate(clone, (int)clone.Day, horizon, cache);
     }
 
-    internal static decimal Evaluate(Player state, int day, int horizon)
+    internal static decimal Evaluate(Player state, int day, int horizon, Dictionary<string, decimal> cache)
     {
         if (day >= horizon)
             return state.Points;
+
+        var key = BuildKey(state, day);
+        if (cache.TryGetValue(key, out var memo))
+            return memo;
 
         var actions = EnumerateActions(state);
         decimal best = decimal.MinValue;
@@ -24,11 +29,24 @@ public static class Planner
         {
             var clone = state.DeepClone();
             Apply(clone, action);
-            var value = Evaluate(clone, day + action.TimeCost, horizon);
+            var value = Evaluate(clone, day + action.TimeCost, horizon, cache);
             if (value > best)
                 best = value;
         }
+        cache[key] = best;
         return best;
+    }
+
+    internal static string BuildKey(Player player, int day)
+    {
+        var res = player.Resources;
+        var key = $"{day}|{res.Metal}|{res.Crystal}|{res.Deuterium}|";
+        foreach (var planet in player.Planets)
+        {
+            key += $"{planet.MetalMine.Level}-{planet.CrystalMine.Level}-{planet.DeuteriumSynthesizer.Level};";
+        }
+        key += $"{player.PlasmaTechnology.Level}|{player.Astrophysics.Level}";
+        return key;
     }
 
     internal static List<ActionCandidate> EnumerateActions(Player player)
@@ -82,4 +100,3 @@ internal readonly record struct ActionCandidate(IUpgradable? Upgradable, Resourc
 {
     public static ActionCandidate Wait() => new(null, new Resources(0,0,0), new Resources(0,0,0), 1);
 }
-
