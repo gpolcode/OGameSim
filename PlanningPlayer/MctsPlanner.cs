@@ -33,11 +33,11 @@ public sealed class MctsPlanner
         for (int i = 0; i < _iterations; i++)
         {
             var node = Select(rootNode, horizon);
-            if (node.Depth < _maxDepth && node.State.Day < horizon && node.UntriedActions.Count > 0)
+            if (node.Steps < _maxDepth && node.Steps < horizon && node.UntriedActions.Count > 0)
             {
                 node = Expand(node, horizon);
             }
-            var reward = Simulate(node.State.DeepClone(), horizon);
+            var reward = Simulate(node.State.DeepClone(), horizon, node.Steps);
             Backpropagate(node, reward);
         }
 
@@ -47,20 +47,23 @@ public sealed class MctsPlanner
         var plan = new List<ActionCandidate>();
         var currentNode = BestChild(rootNode);
         var simState = root.DeepClone();
+        var steps = 0;
 
-        while (currentNode != null && currentNode.Action.HasValue)
+        while (currentNode != null && currentNode.Action.HasValue && steps < horizon)
         {
             var action = currentNode.Action.Value;
             plan.Add(action);
             Planner.Apply(simState, action);
+            steps += action.TimeCost;
             currentNode = BestChild(currentNode);
         }
 
-        while (simState.Day < horizon)
+        while (steps < horizon)
         {
             var next = Planner.EnumerateActions(simState)[0];
             plan.Add(next);
             Planner.Apply(simState, next);
+            steps += next.TimeCost;
         }
 
         return plan;
@@ -68,7 +71,7 @@ public sealed class MctsPlanner
 
     Node Select(Node node, int horizon)
     {
-        while (node.UntriedActions.Count == 0 && node.Children.Count > 0 && node.Depth < _maxDepth && node.State.Day < horizon)
+        while (node.UntriedActions.Count == 0 && node.Children.Count > 0 && node.Steps < _maxDepth && node.Steps < horizon)
         {
             node = node.Children.OrderByDescending(Uct).First();
         }
@@ -78,26 +81,24 @@ public sealed class MctsPlanner
     Node Expand(Node node, int horizon)
     {
         if (node.UntriedActions.Count == 0) return node;
-        // pick next action (could randomize but deterministic order is fine)
         var index = _random.Next(node.UntriedActions.Count);
         var action = node.UntriedActions[index];
         node.UntriedActions.RemoveAt(index);
         var childState = node.State.DeepClone();
         Planner.Apply(childState, action);
-        var child = new Node(childState, node, action, node.Depth + action.TimeCost);
+        var child = new Node(childState, node, action, node.Steps + action.TimeCost);
         node.Children.Add(child);
         return child;
     }
 
-    double Simulate(Player state, int horizon)
+    double Simulate(Player state, int horizon, int steps)
     {
-        var depth = 0;
-        while (depth < _maxDepth && state.Day < horizon)
+        while (steps < _maxDepth && steps < horizon)
         {
             var actions = Planner.EnumerateActions(state);
-            var action = actions[0]; // ROI based (best ROI first)
+            var action = actions[0];
             Planner.Apply(state, action);
-            depth += action.TimeCost;
+            steps += action.TimeCost;
         }
         return (double)state.Points;
     }
@@ -135,14 +136,14 @@ public sealed class MctsPlanner
         public List<ActionCandidate> UntriedActions { get; }
         public int Visits { get; set; }
         public double TotalValue { get; set; }
-        public int Depth { get; }
+        public int Steps { get; }
 
-        public Node(Player state, Node? parent, ActionCandidate? action, int depth)
+        public Node(Player state, Node? parent, ActionCandidate? action, int steps)
         {
             State = state;
             Parent = parent;
             Action = action;
-            Depth = depth;
+            Steps = steps;
             UntriedActions = Planner.EnumerateActions(state);
         }
     }

@@ -53,6 +53,22 @@ public static class Planner
             list.Add(new ActionCandidate(player.PlasmaTechnology, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
         }
 
+        // Astrophysics upgrade (two levels to unlock a new planet).
+        var astroCost = player.Astrophysics.UpgradeCost;
+        var astroCopy = new Astrophysics();
+        for (int j = 0; j < player.Astrophysics.Level + 1; j++)
+        {
+            astroCopy.Upgrade();
+        }
+        astroCost += astroCopy.UpgradeCost; // cost of second level
+
+        var productionGain = player.Planets[0].MetalMine.TodaysProduction +
+            player.Planets[0].CrystalMine.TodaysProduction +
+            player.Planets[0].DeuteriumSynthesizer.TodaysProduction;
+
+        if (player.Resources.CanSubtract(astroCost))
+            list.Add(new ActionCandidate(player.Astrophysics, astroCost, productionGain, 1));
+
         list.Add(ActionCandidate.Wait());
 
         return list.OrderBy(a => CalculateRoi(a.Cost, a.Gain)).ToList();
@@ -66,13 +82,18 @@ public static class Planner
             return;
         }
 
-        // Wait until we can afford the upgrade, applying production each day.
-        while (!player.TrySpendResources(action.Cost))
-        {
-            player.ProceedToNextDay();
-        }
+        if (!player.TrySpendResources(action.Cost))
+            return; // action assumed affordable
 
-        action.Upgradable.Upgrade();
+        if (action.Upgradable == player.Astrophysics)
+        {
+            player.Astrophysics.Upgrade();
+            player.Astrophysics.Upgrade();
+        }
+        else
+        {
+            action.Upgradable.Upgrade();
+        }
     }
 
     internal static double CalculateRoi(Resources cost, Resources gain)
