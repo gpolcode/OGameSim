@@ -74,6 +74,8 @@ public static class Planner
     {
         var weightedCost = (double)cost.ConvertToMetalValue();
         var weightedGain = (double)gain.ConvertToMetalValue();
+        if (weightedGain == 0)
+            return double.PositiveInfinity;
         return weightedCost / weightedGain;
     }
 }

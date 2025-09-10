@@ -41,14 +41,28 @@ public sealed class MctsPlanner
             Backpropagate(node, reward);
         }
 
-        // Extract best plan from root following highest average value
+        // Extract best plan from root following highest average value.
+        // Continue greedily until the horizon so the returned plan covers
+        // the full planning window.
         var plan = new List<ActionCandidate>();
-        var current = BestChild(rootNode);
-        while (current != null && current.Action.HasValue)
+        var currentNode = BestChild(rootNode);
+        var simState = root.DeepClone();
+
+        while (currentNode != null && currentNode.Action.HasValue)
         {
-            plan.Add(current.Action.Value);
-            current = BestChild(current);
+            var action = currentNode.Action.Value;
+            plan.Add(action);
+            Planner.Apply(simState, action);
+            currentNode = BestChild(currentNode);
         }
+
+        while (simState.Day < horizon)
+        {
+            var next = Planner.EnumerateActions(simState)[0];
+            plan.Add(next);
+            Planner.Apply(simState, next);
+        }
+
         return plan;
     }
 

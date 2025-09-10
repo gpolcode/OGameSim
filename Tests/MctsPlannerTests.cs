@@ -7,17 +7,12 @@ namespace Tests;
 
 public sealed class MctsPlannerTests
 {
-    static decimal ExecutePlan(Player root, IReadOnlyList<ActionCandidate> plan, int horizon)
+    static decimal ExecutePlan(Player root, IReadOnlyList<ActionCandidate> plan)
     {
         var clone = root.DeepClone();
         foreach (var action in plan)
         {
             Planner.Apply(clone, action);
-        }
-        while (clone.Day < horizon)
-        {
-            var next = Planner.EnumerateActions(clone)[0];
-            Planner.Apply(clone, next);
         }
         return clone.Points;
     }
@@ -27,9 +22,16 @@ public sealed class MctsPlannerTests
     {
         var player = new Player();
         var planner = new MctsPlanner(iterations: 50, maxDepth: 5);
-        var plan = planner.Plan(player, horizon:20);
+        const int horizon = 20;
+        var plan = planner.Plan(player, horizon);
         Assert.NotNull(plan);
-        Assert.NotEmpty(plan);
+
+        var clone = player.DeepClone();
+        foreach (var action in plan)
+        {
+            Planner.Apply(clone, action);
+        }
+        Assert.True(clone.Day >= horizon);
     }
 
     [Fact]
@@ -39,11 +41,12 @@ public sealed class MctsPlannerTests
         var few = new MctsPlanner(iterations: 20, maxDepth: 5);
         var many = new MctsPlanner(iterations: 200, maxDepth: 5);
 
-        var planFew = few.Plan(player, horizon:20);
-        var planMany = many.Plan(player, horizon:20);
+        const int horizon = 20;
+        var planFew = few.Plan(player, horizon);
+        var planMany = many.Plan(player, horizon);
 
-        var scoreFew = ExecutePlan(player, planFew, 20);
-        var scoreMany = ExecutePlan(player, planMany, 20);
+        var scoreFew = ExecutePlan(player, planFew);
+        var scoreMany = ExecutePlan(player, planMany);
 
         Assert.True(scoreMany >= scoreFew);
     }
