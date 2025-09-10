@@ -10,30 +10,33 @@ public static class Planner
     public static decimal Search(Player root, int horizon)
     {
         var clone = root.DeepClone();
-        var cache = new Dictionary<string, decimal>();
-        return Evaluate(clone, (int)clone.Day, horizon, cache);
-    }
-
-    internal static decimal Evaluate(Player state, int day, int horizon, Dictionary<string, decimal> cache)
-    {
-        if (day >= horizon)
-            return state.Points;
-
-        var key = BuildKey(state, day);
-        if (cache.TryGetValue(key, out var memo))
-            return memo;
-
-        var actions = EnumerateActions(state);
+        var cache = new HashSet<string>();
+        var stack = new Stack<(Player state, int day)>();
+        stack.Push((clone, (int)clone.Day));
         decimal best = decimal.MinValue;
-        foreach (var action in actions)
+
+        while (stack.Count > 0)
         {
-            var clone = state.DeepClone();
-            Apply(clone, action);
-            var value = Evaluate(clone, day + action.TimeCost, horizon, cache);
-            if (value > best)
-                best = value;
+            var (state, day) = stack.Pop();
+            if (day >= horizon)
+            {
+                if (state.Points > best) best = state.Points;
+                continue;
+            }
+
+            var key = BuildKey(state, day);
+            if (!cache.Add(key))
+                continue;
+
+            var actions = EnumerateActions(state);
+            foreach (var action in actions)
+            {
+                var next = state.DeepClone();
+                Apply(next, action);
+                stack.Push((next, day + action.TimeCost));
+            }
         }
-        cache[key] = best;
+
         return best;
     }
 

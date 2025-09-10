@@ -10,24 +10,28 @@ public static class Planner
     public static decimal Search(Player root, int horizon)
     {
         var clone = root.DeepClone();
-        return Evaluate(clone, (int)clone.Day, horizon);
-    }
-
-    internal static decimal Evaluate(Player state, int day, int horizon)
-    {
-        if (day >= horizon)
-            return state.Points;
-
-        var actions = EnumerateActions(state, horizon - day);
+        var stack = new Stack<(Player state, int day)>();
+        stack.Push((clone, (int)clone.Day));
         decimal best = decimal.MinValue;
-        foreach (var action in actions)
+
+        while (stack.Count > 0)
         {
-            var clone = state.DeepClone();
-            Apply(clone, action);
-            var value = Evaluate(clone, day + action.TimeCost, horizon);
-            if (value > best)
-                best = value;
+            var (state, day) = stack.Pop();
+            if (day >= horizon)
+            {
+                if (state.Points > best) best = state.Points;
+                continue;
+            }
+
+            var actions = EnumerateActions(state, horizon - day);
+            foreach (var action in actions)
+            {
+                var next = state.DeepClone();
+                Apply(next, action);
+                stack.Push((next, day + action.TimeCost));
+            }
         }
+
         return best;
     }
 
