@@ -1,8 +1,6 @@
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using OGameSim.Entities;
 using OGameSim.Production;
 
@@ -10,38 +8,34 @@ namespace PlanningPlayer;
 
 public static class Planner
 {
-    public static decimal Search(Player root, int horizon, int beamWidth = 5)
+    public static decimal Search(Player root, int horizon, int bucketSize = 1000, int bucketCount = 50)
     {
-        var clone = root.DeepClone();
-        var cache = new ConcurrentDictionary<string, decimal>();
-        return Evaluate(clone, (int)clone.Day, horizon, beamWidth, cache);
-    }
-
-    internal static decimal Evaluate(Player state, int day, int horizon, int beamWidth, ConcurrentDictionary<string, decimal> cache)
-    {
-        if (day >= horizon)
-            return state.Points;
-
-        var key = BuildKey(state, day);
-        return cache.GetOrAdd(key, _ =>
+        var start = root.DeepClone();
+        var current = new Dictionary<string, Player>
         {
-            var remaining = horizon - day;
-            var actions = EnumerateActions(state, remaining);
-            var subset = actions.Take(beamWidth).ToList();
-            if (!subset.Any(a => a.Upgradable is null))
-                subset.Add(ActionCandidate.Wait());
+            [BuildKey(start, bucketSize, bucketCount)] = start
+        };
 
-            var results = new ConcurrentBag<decimal>();
-            Parallel.ForEach(subset, action =>
+        for (var day = (int)start.Day; day < horizon; day++)
+        {
+            var next = new Dictionary<string, Player>();
+            foreach (var state in current.Values)
             {
-                var clone = state.DeepClone();
-                Apply(clone, action);
-                var value = Evaluate(clone, day + action.TimeCost, horizon, beamWidth, cache);
-                results.Add(value);
-            });
+                var remaining = horizon - day;
+                var actions = EnumerateActions(state, remaining);
+                foreach (var action in actions)
+                {
+                    var clone = state.DeepClone();
+                    Apply(clone, action);
+                    var key = BuildKey(clone, bucketSize, bucketCount);
+                    if (!next.TryGetValue(key, out var existing) || clone.Points > existing.Points)
+                        next[key] = clone;
+                }
+            }
+            current = next;
+        }
 
-            return results.Max();
-        });
+        return current.Values.Max(p => p.Points);
     }
 
     internal static List<ActionCandidate> EnumerateActions(Player player, int remainingDays)
@@ -77,13 +71,9 @@ public static class Planner
         }
 
         if (player.TrySpendResources(action.Cost))
-        {
             action.Upgradable.Upgrade();
-        }
         else
-        {
             player.ProceedToNextDay();
-        }
     }
 
     internal static double CalculateRoi(Resources cost, Resources gain)
@@ -101,12 +91,20 @@ public static class Planner
         return weightedCost / weightedGain;
     }
 
-    static string BuildKey(Player player, int day)
+    internal static string BuildKey(Player player, int bucketSize, int bucketCount)
     {
+        int Bucket(decimal value)
+        {
+            var index = (int)(value / bucketSize);
+            if (index >= bucketCount) index = bucketCount - 1;
+            return index;
+        }
+
         var sb = new StringBuilder();
-        sb.Append(day).Append('|');
         var res = player.Resources;
-        sb.Append(res.Metal).Append(',').Append(res.Crystal).Append(',').Append(res.Deuterium).Append('|');
+        sb.Append(Bucket(res.Metal)).Append(',');
+        sb.Append(Bucket(res.Crystal)).Append(',');
+        sb.Append(Bucket(res.Deuterium)).Append('|');
         sb.Append(player.Astrophysics.Level).Append('|');
         sb.Append(player.PlasmaTechnology.Level).Append('|');
         foreach (var planet in player.Planets)
@@ -123,4 +121,3 @@ internal readonly record struct ActionCandidate(IUpgradable? Upgradable, Resourc
 {
     public static ActionCandidate Wait() => new(null, new Resources(0,0,0), new Resources(0,0,0), 1);
 }
-

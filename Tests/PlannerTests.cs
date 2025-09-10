@@ -2,8 +2,7 @@ using OGameSim.Entities;
 using OGameSim.Production;
 using PlanningPlayer;
 using Xunit;
-using System.Collections.Concurrent;
-using System.Threading.Tasks;
+using System.Reflection;
 
 namespace Tests
 {
@@ -80,84 +79,48 @@ namespace Tests
         [Fact]
         public void Planner_search_should_return_current_points_when_horizon_zero()
         {
-            // Setup
             var subject = new Player();
-
-            // Act
             var result = Planner.Search(subject, 0);
-
-            // Assert
             Assert.Equal(subject.Points, result);
         }
 
         [Fact]
         public void Planner_enumerate_actions_should_not_throw()
         {
-            // Setup
             var subject = new Player();
-
-            // Act
             var ex = Record.Exception(() => Planner.EnumerateActions(subject, 10));
-
-            // Assert
             Assert.Null(ex);
         }
 
         [Fact]
         public void Planner_enumerate_actions_should_prune_by_payback()
         {
-            // Setup
             var subject = new Player();
-
-            // Act
             var actions = Planner.EnumerateActions(subject, remainingDays: 0);
-
-            // Assert
             Assert.Single(actions);
             Assert.Null(actions[0].Upgradable);
         }
 
         [Fact]
-        public void Planner_search_with_beamwidth_should_consider_top_actions()
-        {
-            // Setup
-            var subject = new Player();
-
-            // Act
-            var result = Planner.Search(subject, horizon: 2, beamWidth: 2);
-
-            // Assert
-            Assert.Equal(0.3m, result);
-        }
-
-        [Fact]
-        public void Planner_search_should_be_thread_safe_and_deterministic()
-        {
-            var baseline = Planner.Search(new Player(), horizon: 3, beamWidth: 3);
-
-            var results = new ConcurrentBag<decimal>();
-            Parallel.For(0, 4, _ =>
-            {
-                results.Add(Planner.Search(new Player(), horizon: 3, beamWidth: 3));
-            });
-
-            Assert.All(results, r => Assert.Equal(baseline, r));
-        }
-
-        [Fact]
-        public void Planner_build_key_should_ignore_points()
+        public void Planner_build_key_should_bucket_resources()
         {
             var p1 = new Player();
+            p1.AddResources(new Resources(500, 0, 0));
             var p2 = new Player();
-            p2.AddResources(new Resources(1000, 0, 0));
-            p2.TrySpendResources(new Resources(1000, 0, 0));
-
-            var key1 = typeof(Planner).GetMethod("BuildKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-                .Invoke(null, new object?[] { p1, 0 }) as string;
-            var key2 = typeof(Planner).GetMethod("BuildKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-                .Invoke(null, new object?[] { p2, 0 }) as string;
-
+            p2.AddResources(new Resources(999, 0, 0));
+            var method = typeof(Planner).GetMethod("BuildKey", BindingFlags.NonPublic | BindingFlags.Static)!;
+            var key1 = method.Invoke(null, new object?[] { p1, 1000, 50 }) as string;
+            var key2 = method.Invoke(null, new object?[] { p2, 1000, 50 }) as string;
             Assert.Equal(key1, key2);
+        }
+
+        [Fact]
+        public void Planner_search_with_buckets_should_match_exact_for_small_horizon()
+        {
+            var player = new Player();
+            var exact = Planner.Search(player, horizon: 2, bucketSize: 1, bucketCount: int.MaxValue);
+            var bucketed = Planner.Search(player, horizon: 2, bucketSize: 1000, bucketCount: 50);
+            Assert.Equal(exact, bucketed);
         }
     }
 }
