@@ -34,14 +34,15 @@ public static class Planner
     internal static List<ActionCandidate> EnumerateActions(Player player)
     {
         var list = new List<ActionCandidate>();
-        foreach (var planet in player.Planets)
+        for (int i = 0; i < player.Planets.Count; i++)
         {
+            var planet = player.Planets[i];
             if (player.Resources.CanSubtract(planet.MetalMine.UpgradeCost))
-                list.Add(new ActionCandidate(planet.MetalMine, planet.MetalMine.UpgradeCost, planet.MetalMine.UpgradeIncreasePerDay, 1));
+                list.Add(new ActionCandidate(ActionType.MetalMine, i, planet.MetalMine.UpgradeCost, planet.MetalMine.UpgradeIncreasePerDay, 1));
             if (player.Resources.CanSubtract(planet.CrystalMine.UpgradeCost))
-                list.Add(new ActionCandidate(planet.CrystalMine, planet.CrystalMine.UpgradeCost, planet.CrystalMine.UpgradeIncreasePerDay, 1));
+                list.Add(new ActionCandidate(ActionType.CrystalMine, i, planet.CrystalMine.UpgradeCost, planet.CrystalMine.UpgradeIncreasePerDay, 1));
             if (player.Resources.CanSubtract(planet.DeuteriumSynthesizer.UpgradeCost))
-                list.Add(new ActionCandidate(planet.DeuteriumSynthesizer, planet.DeuteriumSynthesizer.UpgradeCost, planet.DeuteriumSynthesizer.UpgradeIncreasePerDay, 1));
+                list.Add(new ActionCandidate(ActionType.DeuteriumSynthesizer, i, planet.DeuteriumSynthesizer.UpgradeCost, planet.DeuteriumSynthesizer.UpgradeIncreasePerDay, 1));
         }
 
         var currentProduction = player.GetTodaysProduction();
@@ -50,7 +51,7 @@ public static class Planner
             var plasmaClone = player.DeepClone();
             plasmaClone.PlasmaTechnology.Upgrade();
             var productionUpgrade = plasmaClone.GetTodaysProduction() - currentProduction;
-            list.Add(new ActionCandidate(player.PlasmaTechnology, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
+            list.Add(new ActionCandidate(ActionType.PlasmaTechnology, -1, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
         }
 
         // Astrophysics upgrade (two levels to unlock a new planet).
@@ -67,7 +68,7 @@ public static class Planner
             player.Planets[0].DeuteriumSynthesizer.TodaysProduction;
 
         if (player.Resources.CanSubtract(astroCost))
-            list.Add(new ActionCandidate(player.Astrophysics, astroCost, productionGain, 1));
+            list.Add(new ActionCandidate(ActionType.Astrophysics, -1, astroCost, productionGain, 1));
 
         list.Add(ActionCandidate.Wait());
 
@@ -76,23 +77,52 @@ public static class Planner
 
     internal static void Apply(Player player, ActionCandidate action)
     {
-        if (action.Upgradable is null)
+        switch (action.Type)
         {
-            player.ProceedToNextDay();
-            return;
-        }
+            case ActionType.Wait:
+                player.ProceedToNextDay();
+                break;
 
-        if (!player.TrySpendResources(action.Cost))
-            return; // action assumed affordable
+            case ActionType.MetalMine:
+                if (player.TrySpendResources(action.Cost))
+                {
+                    player.Planets[action.PlanetIndex].MetalMine.Upgrade();
+                    player.ProceedToNextDay();
+                }
+                break;
 
-        if (action.Upgradable == player.Astrophysics)
-        {
-            player.Astrophysics.Upgrade();
-            player.Astrophysics.Upgrade();
-        }
-        else
-        {
-            action.Upgradable.Upgrade();
+            case ActionType.CrystalMine:
+                if (player.TrySpendResources(action.Cost))
+                {
+                    player.Planets[action.PlanetIndex].CrystalMine.Upgrade();
+                    player.ProceedToNextDay();
+                }
+                break;
+
+            case ActionType.DeuteriumSynthesizer:
+                if (player.TrySpendResources(action.Cost))
+                {
+                    player.Planets[action.PlanetIndex].DeuteriumSynthesizer.Upgrade();
+                    player.ProceedToNextDay();
+                }
+                break;
+
+            case ActionType.PlasmaTechnology:
+                if (player.TrySpendResources(action.Cost))
+                {
+                    player.PlasmaTechnology.Upgrade();
+                    player.ProceedToNextDay();
+                }
+                break;
+
+            case ActionType.Astrophysics:
+                if (player.TrySpendResources(action.Cost))
+                {
+                    player.Astrophysics.Upgrade();
+                    player.Astrophysics.Upgrade();
+                    player.ProceedToNextDay();
+                }
+                break;
         }
     }
 
@@ -106,8 +136,18 @@ public static class Planner
     }
 }
 
-public readonly record struct ActionCandidate(IUpgradable? Upgradable, Resources Cost, Resources Gain, int TimeCost)
+public enum ActionType
 {
-    public static ActionCandidate Wait() => new(null, new Resources(0,0,0), new Resources(0,0,0), 1);
+    Wait,
+    MetalMine,
+    CrystalMine,
+    DeuteriumSynthesizer,
+    PlasmaTechnology,
+    Astrophysics
+}
+
+public readonly record struct ActionCandidate(ActionType Type, int PlanetIndex, Resources Cost, Resources Gain, int TimeCost)
+{
+    public static ActionCandidate Wait() => new(ActionType.Wait, -1, new Resources(0,0,0), new Resources(0,0,0), 1);
 }
 

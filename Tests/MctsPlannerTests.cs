@@ -61,7 +61,7 @@ public sealed class MctsPlannerTests
         const int horizon = 8000;
         var plan = planner.Plan(player, horizon);
         var score = ExecutePlan(player, plan);
-        Assert.True(score > 4_000m);
+        Assert.True(score > 250_000_000m);
     }
 }
 
