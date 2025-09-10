@@ -54,21 +54,13 @@ public static class Planner
             list.Add(new ActionCandidate(ActionType.PlasmaTechnology, -1, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
         }
 
-        // Astrophysics upgrade (two levels to unlock a new planet).
-        var astroCost = player.Astrophysics.UpgradeCost;
-        var astroCopy = new Astrophysics();
-        for (int j = 0; j < player.Astrophysics.Level + 1; j++)
+        if (player.Resources.CanSubtract(player.Astrophysics.UpgradeCost))
         {
-            astroCopy.Upgrade();
+            var astroClone = player.DeepClone();
+            astroClone.Astrophysics.Upgrade();
+            var productionUpgrade = astroClone.GetTodaysProduction() - currentProduction;
+            list.Add(new ActionCandidate(ActionType.Astrophysics, -1, player.Astrophysics.UpgradeCost, productionUpgrade, 1));
         }
-        astroCost += astroCopy.UpgradeCost; // cost of second level
-
-        var productionGain = player.Planets[0].MetalMine.TodaysProduction +
-            player.Planets[0].CrystalMine.TodaysProduction +
-            player.Planets[0].DeuteriumSynthesizer.TodaysProduction;
-
-        if (player.Resources.CanSubtract(astroCost))
-            list.Add(new ActionCandidate(ActionType.Astrophysics, -1, astroCost, productionGain, 1));
 
         list.Add(ActionCandidate.Wait());
 
@@ -87,7 +79,6 @@ public static class Planner
                 if (player.TrySpendResources(action.Cost))
                 {
                     player.Planets[action.PlanetIndex].MetalMine.Upgrade();
-                    player.ProceedToNextDay();
                 }
                 break;
 
@@ -95,7 +86,6 @@ public static class Planner
                 if (player.TrySpendResources(action.Cost))
                 {
                     player.Planets[action.PlanetIndex].CrystalMine.Upgrade();
-                    player.ProceedToNextDay();
                 }
                 break;
 
@@ -103,7 +93,6 @@ public static class Planner
                 if (player.TrySpendResources(action.Cost))
                 {
                     player.Planets[action.PlanetIndex].DeuteriumSynthesizer.Upgrade();
-                    player.ProceedToNextDay();
                 }
                 break;
 
@@ -111,7 +100,6 @@ public static class Planner
                 if (player.TrySpendResources(action.Cost))
                 {
                     player.PlasmaTechnology.Upgrade();
-                    player.ProceedToNextDay();
                 }
                 break;
 
@@ -119,8 +107,6 @@ public static class Planner
                 if (player.TrySpendResources(action.Cost))
                 {
                     player.Astrophysics.Upgrade();
-                    player.Astrophysics.Upgrade();
-                    player.ProceedToNextDay();
                 }
                 break;
         }
