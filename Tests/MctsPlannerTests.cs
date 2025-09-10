@@ -50,5 +50,16 @@ public sealed class MctsPlannerTests
 
         Assert.True(scoreMany >= scoreFew);
     }
+
+    [Fact]
+    public void Planner_handles_long_horizon()
+    {
+        var player = new Player();
+        var planner = new MctsPlanner(iterations: 100, maxDepth: 30);
+        const int horizon = 8000;
+        var plan = planner.Plan(player, horizon);
+        var score = ExecutePlan(player, plan);
+        Assert.True(score > 100_000m);
+    }
 }
 

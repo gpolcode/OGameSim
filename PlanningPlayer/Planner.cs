@@ -36,16 +36,22 @@ public static class Planner
         var list = new List<ActionCandidate>();
         foreach (var planet in player.Planets)
         {
-            list.Add(new ActionCandidate(planet.MetalMine, planet.MetalMine.UpgradeCost, planet.MetalMine.UpgradeIncreasePerDay, 1));
-            list.Add(new ActionCandidate(planet.CrystalMine, planet.CrystalMine.UpgradeCost, planet.CrystalMine.UpgradeIncreasePerDay, 1));
-            list.Add(new ActionCandidate(planet.DeuteriumSynthesizer, planet.DeuteriumSynthesizer.UpgradeCost, planet.DeuteriumSynthesizer.UpgradeIncreasePerDay, 1));
+            if (player.Resources.CanSubtract(planet.MetalMine.UpgradeCost))
+                list.Add(new ActionCandidate(planet.MetalMine, planet.MetalMine.UpgradeCost, planet.MetalMine.UpgradeIncreasePerDay, 1));
+            if (player.Resources.CanSubtract(planet.CrystalMine.UpgradeCost))
+                list.Add(new ActionCandidate(planet.CrystalMine, planet.CrystalMine.UpgradeCost, planet.CrystalMine.UpgradeIncreasePerDay, 1));
+            if (player.Resources.CanSubtract(planet.DeuteriumSynthesizer.UpgradeCost))
+                list.Add(new ActionCandidate(planet.DeuteriumSynthesizer, planet.DeuteriumSynthesizer.UpgradeCost, planet.DeuteriumSynthesizer.UpgradeIncreasePerDay, 1));
         }
 
         var currentProduction = player.GetTodaysProduction();
-        var plasmaClone = player.DeepClone();
-        plasmaClone.PlasmaTechnology.Upgrade();
-        var productionUpgrade = plasmaClone.GetTodaysProduction() - currentProduction;
-        list.Add(new ActionCandidate(player.PlasmaTechnology, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
+        if (player.Resources.CanSubtract(player.PlasmaTechnology.UpgradeCost))
+        {
+            var plasmaClone = player.DeepClone();
+            plasmaClone.PlasmaTechnology.Upgrade();
+            var productionUpgrade = plasmaClone.GetTodaysProduction() - currentProduction;
+            list.Add(new ActionCandidate(player.PlasmaTechnology, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
+        }
 
         list.Add(ActionCandidate.Wait());
 
@@ -60,14 +66,13 @@ public static class Planner
             return;
         }
 
-        if (player.TrySpendResources(action.Cost))
-        {
-            action.Upgradable.Upgrade();
-        }
-        else
+        // Wait until we can afford the upgrade, applying production each day.
+        while (!player.TrySpendResources(action.Cost))
         {
             player.ProceedToNextDay();
         }
+
+        action.Upgradable.Upgrade();
     }
 
     internal static double CalculateRoi(Resources cost, Resources gain)
