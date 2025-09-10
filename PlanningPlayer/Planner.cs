@@ -78,7 +78,7 @@ public static class Planner
     }
 }
 
-internal readonly record struct ActionCandidate(IUpgradable? Upgradable, Resources Cost, Resources Gain, int TimeCost)
+public readonly record struct ActionCandidate(IUpgradable? Upgradable, Resources Cost, Resources Gain, int TimeCost)
 {
     public static ActionCandidate Wait() => new(null, new Resources(0,0,0), new Resources(0,0,0), 1);
 }
