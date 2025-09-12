@@ -13,13 +13,15 @@ public sealed class MctsPlanner
 {
     readonly int _iterations;
     readonly int _maxDepth;
-    readonly Random _random = new(0);
+    readonly Random _random;
     const double Exploration = 1.41421356237; // sqrt(2)
+    const double Epsilon = 0.1; // chance to explore random action
 
-    public MctsPlanner(int iterations, int maxDepth)
+    public MctsPlanner(int iterations, int maxDepth, Random? random = null)
     {
         _iterations = iterations;
         _maxDepth = maxDepth;
+        _random = random ?? new Random();
     }
 
     /// <summary>
@@ -60,7 +62,10 @@ public sealed class MctsPlanner
 
         while (steps < horizon)
         {
-            var next = Planner.EnumerateActions(simState)[0];
+            var actions = Planner.EnumerateActions(simState);
+            var next = _random.NextDouble() < Epsilon
+                ? actions[_random.Next(actions.Count)]
+                : actions[0];
             plan.Add(next);
             Planner.Apply(simState, next);
             steps += next.TimeCost;
@@ -73,7 +78,10 @@ public sealed class MctsPlanner
     {
         while (node.UntriedActions.Count == 0 && node.Children.Count > 0 && node.Steps < _maxDepth && node.Steps < horizon)
         {
-            node = node.Children.OrderByDescending(Uct).First();
+            node = node.Children
+                .OrderByDescending(Uct)
+                .ThenBy(_ => _random.Next())
+                .First();
         }
         return node;
     }
@@ -96,7 +104,9 @@ public sealed class MctsPlanner
         while (steps < _maxDepth && steps < horizon)
         {
             var actions = Planner.EnumerateActions(state);
-            var action = actions[0];
+            var action = _random.NextDouble() < Epsilon
+                ? actions[_random.Next(actions.Count)]
+                : actions[0];
             Planner.Apply(state, action);
             steps += action.TimeCost;
         }
@@ -117,7 +127,10 @@ public sealed class MctsPlanner
     {
         return node.Children.Count == 0
             ? null
-            : node.Children.OrderByDescending(c => c.Visits == 0 ? double.NegativeInfinity : c.TotalValue / c.Visits).First();
+            : node.Children
+                .OrderByDescending(c => c.Visits == 0 ? double.NegativeInfinity : c.TotalValue / c.Visits)
+                .ThenBy(_ => _random.Next())
+                .First();
     }
 
     double Uct(Node node)
