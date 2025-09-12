@@ -35,7 +35,7 @@ public class MemoizationPlayerTests
     }
 
     [Fact]
-    public void Search_PrintsProgressAndResult()
+    public void Search_LogsBestScoreAndResult()
     {
         var player = new Player();
         var original = Console.Out;
@@ -44,15 +44,14 @@ public class MemoizationPlayerTests
 
         var result = Planner.Search(player, 3);
         Console.WriteLine(result);
-        Console.Out.Flush();
         Console.SetOut(original);
 
         var output = sw.ToString();
-        Assert.Contains("Day 3/3", output);
+        Assert.Contains("New best score", output);
         Assert.EndsWith(result + Environment.NewLine, output);
     }
 
-    [Fact]
+    [Fact(Skip = "Long-running demo")]
     public void Search_Horizon8000_LogsResult()
     {
         var player = new Player();

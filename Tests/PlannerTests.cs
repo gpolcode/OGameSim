@@ -104,7 +104,7 @@ namespace Tests
         }
 
         [Fact]
-        public void Planner_search_prints_progress_and_result()
+        public void Planner_search_logs_best_score_and_result()
         {
             var player = new Player();
             var original = Console.Out;
@@ -113,11 +113,10 @@ namespace Tests
 
             var result = Planner.Search(player, 3);
             Console.WriteLine(result);
-            Console.Out.Flush();
             Console.SetOut(original);
 
             var output = sw.ToString();
-            Assert.Contains("Day 3/3", output);
+            Assert.Contains("New best score", output);
             Assert.EndsWith(result + Environment.NewLine, output);
         }
     }
