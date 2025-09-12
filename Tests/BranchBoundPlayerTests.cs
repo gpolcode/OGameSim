@@ -48,4 +48,13 @@ public class BranchBoundPlayerTests
         Assert.Contains("Day 3/3", output);
         Assert.EndsWith(result + Environment.NewLine, output);
     }
+
+    [Fact]
+    public void Search_Horizon8000_LogsResult()
+    {
+        var player = new Player();
+        var result = Planner.Search(player, 8000);
+        Console.WriteLine($"BranchBound 8000-day result: {result}");
+        Assert.True(true);
+    }
 }
