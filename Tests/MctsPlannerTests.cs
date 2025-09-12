@@ -2,11 +2,19 @@ using OGameSim.Entities;
 using PlanningPlayer;
 using Xunit;
 using System.Collections.Generic;
+using Xunit.Abstractions;
 
 namespace Tests;
 
 public sealed class MctsPlannerTests
 {
+    readonly ITestOutputHelper _output;
+
+    public MctsPlannerTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
     static decimal ExecutePlan(Player root, IReadOnlyList<ActionCandidate> plan)
     {
         var clone = root.DeepClone();
@@ -63,6 +71,23 @@ public sealed class MctsPlannerTests
         var plan = planner.Plan(player, horizon);
         var score = ExecutePlan(player, plan);
         Assert.True(score > 250_000_000m);
+    }
+
+    [Fact]
+    public void Planner_logs_scores_for_sample_iterations()
+    {
+        var iterations = new[] { 50, 200, 1000 };
+        const int horizon = 20;
+        foreach (var iter in iterations)
+        {
+            var player = new Player();
+            var planner = new MctsPlanner(iterations: iter, maxDepth: 5);
+            var plan = planner.Plan(player, horizon);
+            var score = ExecutePlan(player, plan);
+            _output.WriteLine($"Iterations {iter}: {score}");
+        }
+
+        Assert.True(true);
     }
 }
 
