@@ -11,8 +11,9 @@ public class PaybackPruningPlayerTests
     {
         var player = new Player();
         var actions = Planner.EnumerateActions(player, 0);
-        Assert.Single(actions);
-        Assert.Null(actions[0].Upgradable);
+        Assert.Equal(2, actions.Count);
+        Assert.Contains(actions, a => a.Upgradable == player.Astrophysics);
+        Assert.Contains(actions, a => a.Upgradable is null);
     }
 
     [Fact]
@@ -29,6 +30,14 @@ public class PaybackPruningPlayerTests
         var player = new Player();
         var result = Planner.Search(player, 2);
         Assert.Equal(0.300m, result);
+    }
+
+    [Fact]
+    public void EnumerateActions_IncludesAstrophysics()
+    {
+        var player = new Player();
+        var actions = Planner.EnumerateActions(player, 1);
+        Assert.Contains(actions, a => a.Upgradable == player.Astrophysics);
     }
 
     [Fact]

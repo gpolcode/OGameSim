@@ -55,10 +55,15 @@ public static class Planner
         var productionUpgrade = plasmaClone.GetTodaysProduction() - currentProduction;
         list.Add(new ActionCandidate(player.PlasmaTechnology, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
 
+        var astroClone = player.DeepClone();
+        astroClone.Astrophysics.Upgrade();
+        var astroUpgrade = astroClone.GetTodaysProduction() - currentProduction;
+        list.Add(new ActionCandidate(player.Astrophysics, player.Astrophysics.UpgradeCost, astroUpgrade, 1));
+
         list.Add(ActionCandidate.Wait());
 
         return list
-            .Where(a => a.Upgradable is null || CalculatePayback(a.Cost, a.Gain) <= remainingDays)
+            .Where(a => a.Upgradable is null || a.Upgradable == player.Astrophysics || CalculatePayback(a.Cost, a.Gain) <= remainingDays)
             .OrderBy(a => CalculateRoi(a.Cost, a.Gain))
             .ToList();
     }

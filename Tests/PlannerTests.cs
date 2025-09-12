@@ -104,6 +104,14 @@ namespace Tests
         }
 
         [Fact]
+        public void Planner_enumerate_actions_should_include_astrophysics()
+        {
+            var subject = new Player();
+            var actions = Planner.EnumerateActions(subject);
+            Assert.Contains(actions, a => a.Upgradable == subject.Astrophysics);
+        }
+
+        [Fact]
         public void Planner_search_logs_best_score_and_result()
         {
             var player = new Player();

@@ -32,6 +32,14 @@ public class BranchBoundPlayerTests
     }
 
     [Fact]
+    public void EnumerateActions_IncludesAstrophysics()
+    {
+        var player = new Player();
+        var actions = Planner.EnumerateActions(player);
+        Assert.Contains(actions, a => a.Upgradable == player.Astrophysics);
+    }
+
+    [Fact]
     public void Search_LogsBestScoreAndResult()
     {
         var player = new Player();

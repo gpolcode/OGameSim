@@ -72,6 +72,11 @@ public static class Planner
         var productionUpgrade = plasmaClone.GetTodaysProduction() - currentProduction;
         list.Add(new ActionCandidate(player.PlasmaTechnology, player.PlasmaTechnology.UpgradeCost, productionUpgrade, 1));
 
+        var astroClone = player.DeepClone();
+        astroClone.Astrophysics.Upgrade();
+        var astroUpgrade = astroClone.GetTodaysProduction() - currentProduction;
+        list.Add(new ActionCandidate(player.Astrophysics, player.Astrophysics.UpgradeCost, astroUpgrade, 1));
+
         list.Add(ActionCandidate.Wait());
 
         return list.OrderBy(a => CalculateRoi(a.Cost, a.Gain)).ToList();
