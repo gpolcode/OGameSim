@@ -8,12 +8,12 @@ import torch
 
 from ..foo_torch import Player, apply_action, update_state, get_player_stats
 
-# Gymnasium expects NumPy observations, but the internal state lives on CUDA.
-# The environment therefore converts the device tensor state to a CPU NumPy
-# array whenever observations are returned.  All computation remains on the GPU.
+
+# The environment operates entirely on CUDA tensors and never transfers data
+# to the CPU during `reset` or `step`.
 
 
-class GridWorldEnv(gym.Env[np.ndarray, Union[int, torch.Tensor]]):
+class GridWorldEnv(gym.Env[torch.Tensor, Union[int, torch.Tensor]]):
     stepCounter = 0
     maxSteps = 8000
     metadata = {
@@ -45,7 +45,6 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, torch.Tensor]]):
         terminated = terminated or self.stepCounter > self.maxSteps
         infos = {}
 
-        reward_value = reward.item()
         if terminated:
             stats = get_player_stats(self.player)
             infos = {
@@ -65,10 +64,10 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, torch.Tensor]]):
                     "deut_min": float(stats["DeutMin"]),
                 }
             }
-            reward_value = 0.0
+            reward = torch.tensor(0.0, device=self.device)
 
-        obs = self.state.detach().to("cpu", dtype=torch.float32).numpy()
-        return obs, reward_value, terminated, False, infos
+        obs = self.state.detach().to(dtype=torch.float32)
+        return obs, reward, terminated, False, infos
 
     def reset(
         self,
@@ -81,7 +80,7 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, torch.Tensor]]):
         self.player = Player(self.device)
         self.state = update_state(self.player)
 
-        obs = self.state.detach().to("cpu", dtype=torch.float32).numpy()
+        obs = self.state.detach().to(dtype=torch.float32)
         return obs, {}
 
     def updateState(self):

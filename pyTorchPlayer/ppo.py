@@ -4,16 +4,17 @@ import random
 import time
 from dataclasses import dataclass
 import uuid
+import math
 
 import gymnasium as gym
 import ogame_env
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
+from ogame_env.torch_vector_env import TorchVectorEnv
 
 @dataclass
 class Args:
@@ -165,8 +166,8 @@ if __name__ == "__main__":
     device = torch.device("cuda:0")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)],
+    envs = TorchVectorEnv(
+        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -192,9 +193,7 @@ if __name__ == "__main__":
     global_step = 0
     start_time = time.time()
     next_obs, _ = envs.reset(seed=args.seed)
-    # Env returns NumPy arrays on the CPU; move them directly to the CUDA device.
-    next_obs = torch.tensor(next_obs, dtype=torch.float32, device=device)
-    next_done = torch.zeros(args.num_envs).to(device)
+    next_done = torch.zeros(args.num_envs, device=device)
 
     for iteration in range(1, args.num_iterations + 1):
         # Save a checkpoint
@@ -224,17 +223,9 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            # SyncVectorEnv expects host numpy actions
-            next_obs, reward, terminations, truncations, infos = envs.step(
-                action.cpu().numpy()
-            )
-            next_done = torch.logical_or(
-                torch.as_tensor(terminations, device=device),
-                torch.as_tensor(truncations, device=device),
-            )
-            rewards[step] = torch.as_tensor(reward, device=device).view(-1)
-            next_obs = torch.tensor(next_obs, dtype=torch.float32, device=device)
-            next_done = next_done.to(device)
+            next_obs, reward, terminations, truncations, infos = envs.step(action)
+            next_done = torch.logical_or(terminations, truncations).float()
+            rewards[step] = reward.view(-1)
 
             if "final_info" in infos:
                 info = infos["final_info"]
@@ -273,7 +264,7 @@ if __name__ == "__main__":
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
                 if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_done
+                    nextnonterminal = (~next_done.bool()).float()
                     nextvalues = next_value
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]

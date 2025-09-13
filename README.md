@@ -77,3 +77,13 @@ n-planet deut upgrade
 
 ## termination
 random 8000days
+
+
+## Running Python tests
+
+Install the Python dependencies and execute:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pytest pyTorchPlayer/tests
+```
