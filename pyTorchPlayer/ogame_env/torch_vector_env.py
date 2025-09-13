@@ -15,25 +15,29 @@ class TorchVectorEnv:
 
     def reset(self, seed: int | None = None):
         obs = []
-        infos = []
         for i, env in enumerate(self.envs):
             s = seed + i if seed is not None else None
-            ob, info = env.reset(seed=s)
+            ob, _ = env.reset(seed=s)
             obs.append(ob)
-            infos.append(info)
-        return torch.stack(obs), infos
+        return torch.stack(obs), {}
 
     def step(self, actions: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, Any]]:
-        obs, rewards, terminations, truncations, infos = [], [], [], [], []
+        obs, rewards, terminations, truncations = [], [], [], []
+        final_info: Dict[str, List[Any]] = {}
         for env, action in zip(self.envs, actions):
             ob, rew, term, trunc, info = env.step(action)
             obs.append(ob)
             rewards.append(rew)
             terminations.append(term)
             truncations.append(trunc)
-            infos.append(info)
+            if "final_info" in info:
+                for k, v in info["final_info"].items():
+                    final_info.setdefault(k, []).append(v)
         obs_t = torch.stack(obs)
         rewards_t = torch.stack(rewards)
         term_t = torch.tensor(terminations, dtype=torch.bool, device=obs_t.device)
         trunc_t = torch.tensor(truncations, dtype=torch.bool, device=obs_t.device)
-        return obs_t, rewards_t, term_t, trunc_t, infos
+        info_dict: Dict[str, Any] = {}
+        if final_info:
+            info_dict["final_info"] = final_info
+        return obs_t, rewards_t, term_t, trunc_t, info_dict

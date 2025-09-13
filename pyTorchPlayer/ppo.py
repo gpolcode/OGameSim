@@ -91,7 +91,10 @@ def make_env(env_id, idx, capture_video, run_name):
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
             env = gym.make(env_id)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
+        # The environment already reports episodic statistics in its `info`
+        # dictionary, so we avoid the default Gymnasium wrapper which expects
+        # NumPy arrays and would trigger CPU transfers.  This keeps all
+        # interactions on CUDA tensors.
         return env
 
     return thunk
