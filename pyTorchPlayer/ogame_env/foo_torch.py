@@ -383,3 +383,16 @@ def get_player_stats(player: Player):
         "DeutAverage": deut_levels.mean().item(),
         "DeutMin": deut_levels.min().item(),
     }
+
+# JIT compile critical functions for improved performance. ``torch.compile`` is
+# preferred when available; otherwise we fall back to TorchScript.
+if hasattr(torch, "compile"):
+    try:
+        apply_action = torch.compile(apply_action, mode="reduce-overhead")
+        update_state = torch.compile(update_state, mode="reduce-overhead")
+    except Exception:  # pragma: no cover - compile may fail in some builds
+        apply_action = torch.jit.script(apply_action)
+        update_state = torch.jit.script(update_state)
+else:  # pragma: no cover
+    apply_action = torch.jit.script(apply_action)
+    update_state = torch.jit.script(update_state)
