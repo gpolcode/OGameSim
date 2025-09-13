@@ -32,7 +32,7 @@ def test_player_planet_count(level, count):
     for _ in range(level):
         player.astrophysics.upgrade()
     player._update_planets()
-    assert len(player.planets) == count
+    assert player.num_planets.item() == count
 
 
 def test_player_has_no_resources():

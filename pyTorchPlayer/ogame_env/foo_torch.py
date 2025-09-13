@@ -217,6 +217,8 @@ class Player:
     astrophysics: Astrophysics
     plasma: PlasmaTechnology
     planets: List[Planet]
+    max_planets: int
+    num_planets: torch.Tensor
     device: torch.device
 
     def __init__(self, device=None):
@@ -228,12 +230,13 @@ class Player:
         self.day = torch.zeros(1, dtype=torch.float64, device=device)
         self.astrophysics = Astrophysics(device)
         self.plasma = PlasmaTechnology(device)
-        self.planets = [Planet(-115, device)]
+        self.max_planets = 15
+        self.planets = [Planet(-115, device) for _ in range(self.max_planets)]
+        self.num_planets = torch.ones(1, dtype=torch.int64, device=device)
 
     def _update_planets(self):
-        required = int(torch.ceil(self.astrophysics.level / 2).item()) + 1
-        while len(self.planets) < required:
-            self.planets.append(Planet(-115, self.device))
+        required = torch.ceil(self.astrophysics.level / 2).to(torch.int64) + 1
+        self.num_planets = torch.clamp(required, max=self.max_planets)
 
     def add_resources(self, resources: Resources):
         self.resources += resources
@@ -257,11 +260,14 @@ class Player:
 
     def get_todays_production(self) -> Resources:
         self._update_planets()
-        mine_prod = Resources.zeros(self.device)
-        for planet in self.planets:
-            mine_prod += planet.metal_mine.todays_production
-            mine_prod += planet.crystal_mine.todays_production
-            mine_prod += planet.deuterium_synthesizer.todays_production
+        count = int(self.num_planets.item())
+        prods = torch.stack([
+            planet.metal_mine.todays_production.values
+            + planet.crystal_mine.todays_production.values
+            + planet.deuterium_synthesizer.todays_production.values
+            for planet in self.planets[:count]
+        ])
+        mine_prod = Resources(prods.sum(dim=0))
         modifier_prod = mine_prod * self.plasma.modifier
         return mine_prod + modifier_prod
 
@@ -315,7 +321,7 @@ def apply_action(player: Player, action: int):
         return _try_upgrade(player, player.plasma)
 
     planet_index = action // 3 - 1
-    if planet_index > len(player.planets) - 1:
+    if planet_index >= int(player.num_planets.item()):
         return _penalty(player)
 
     mod = action % 3
@@ -346,7 +352,8 @@ def update_state(player: Player) -> torch.Tensor:
     add_resources(delta_prod)
 
     player._update_planets()
-    for planet in player.planets:
+    count = int(player.num_planets.item())
+    for planet in player.planets[:count]:
         add_resources(planet.metal_mine.upgrade_cost)
         add_resources(planet.metal_mine.upgrade_increase_per_day)
         add_resources(planet.crystal_mine.upgrade_cost)
