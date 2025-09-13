@@ -288,44 +288,44 @@ def get_exploration_reward(player: Player) -> torch.Tensor:
     return reward["value"].to(player.device)
 
 
+def _penalty(player: Player):
+    return torch.tensor(-0.1, device=player.device), False
+
+
+def _try_upgrade(player: Player, upgradable):
+    current_points = player.points.clone()
+    if player.try_spend_resources(upgradable.upgrade_cost):
+        upgradable.upgrade()
+        gained_points = (player.points - current_points)[0]
+        upgrade_reward = torch.log10(gained_points + 1)
+        exploration_reward = get_exploration_reward(player)
+        return (upgrade_reward + exploration_reward), False
+    return _penalty(player)
+
+
 def apply_action(player: Player, action: int):
-    def penalty():
-        return torch.tensor(-0.1, device=player.device), False
+    player._update_planets()
 
-    def try_upgrade(upgradable):
-        current_points = player.points.clone()
-        if player.try_spend_resources(upgradable.upgrade_cost):
-            upgradable.upgrade()
-            gained_points = (player.points - current_points)[0]
-            upgrade_reward = torch.log10(gained_points + 1)
-            exploration_reward = get_exploration_reward(player)
-            return (upgrade_reward + exploration_reward), False
-        return penalty()
-
-    def proceed_to_next_day():
+    if action == 0:
         player.proceed_to_next_day()
         return torch.tensor(0.1, device=player.device), False
+    if action == 1:
+        return _try_upgrade(player, player.astrophysics)
+    if action == 2:
+        return _try_upgrade(player, player.plasma)
 
-    player._update_planets()
-    planet_index = int(math.floor(action / 3.0)) - 1
+    planet_index = action // 3 - 1
     if planet_index > len(player.planets) - 1:
-        return penalty()
+        return _penalty(player)
 
     mod = action % 3
-    if action == 0:
-        return proceed_to_next_day()
-    elif action == 1:
-        return try_upgrade(player.astrophysics)
-    elif action == 2:
-        return try_upgrade(player.plasma)
-    elif mod == 0:
-        return try_upgrade(player.planets[planet_index].metal_mine)
-    elif mod == 1:
-        return try_upgrade(player.planets[planet_index].crystal_mine)
-    elif mod == 2:
-        return try_upgrade(player.planets[planet_index].deuterium_synthesizer)
-    else:
-        raise NotImplementedError
+    if mod == 0:
+        return _try_upgrade(player, player.planets[planet_index].metal_mine)
+    if mod == 1:
+        return _try_upgrade(player, player.planets[planet_index].crystal_mine)
+    if mod == 2:
+        return _try_upgrade(player, player.planets[planet_index].deuterium_synthesizer)
+    raise NotImplementedError
 
 
 def update_state(player: Player) -> torch.Tensor:
@@ -384,21 +384,9 @@ def get_player_stats(player: Player):
         "DeutMin": deut_levels.min().item(),
     }
 
-# JIT compile critical functions for improved performance. ``torch.compile`` is
-# preferred when available; otherwise we fall back to TorchScript.
-if hasattr(torch, "compile"):
-    try:
-        apply_action = torch.compile(apply_action, mode="reduce-overhead")
-        update_state = torch.compile(update_state, mode="reduce-overhead")
-    except Exception:  # pragma: no cover - compilation may fail
-        try:
-            apply_action = torch.jit.script(apply_action)
-            update_state = torch.jit.script(update_state)
-        except Exception:  # pragma: no cover - TorchScript may also fail
-            pass
-else:  # pragma: no cover - ``torch.compile`` not available
-    try:
-        apply_action = torch.jit.script(apply_action)
-        update_state = torch.jit.script(update_state)
-    except Exception:  # pragma: no cover
-        pass
+# JIT compile critical functions for improved performance.
+if not hasattr(torch, "compile"):
+    raise RuntimeError("torch.compile is required")
+
+apply_action = torch.compile(apply_action, mode="reduce-overhead")
+update_state = torch.compile(update_state, mode="reduce-overhead")
