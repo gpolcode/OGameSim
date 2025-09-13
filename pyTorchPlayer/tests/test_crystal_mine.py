@@ -1,10 +1,14 @@
 import pytest
 import torch
+
+if not torch.cuda.is_available():
+    pytest.skip("CUDA is required", allow_module_level=True)
+
 from ogame_env.foo_torch import CrystalMine
 
 
 def build_mine(level):
-    mine = CrystalMine(torch.device("cpu"))
+    mine = CrystalMine(torch.device("cuda"))
     for _ in range(level):
         mine.upgrade()
     return mine

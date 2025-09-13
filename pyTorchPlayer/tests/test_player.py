@@ -1,11 +1,15 @@
 import math
 import pytest
 import torch
+
+if not torch.cuda.is_available():
+    pytest.skip("CUDA is required", allow_module_level=True)
+
 from ogame_env.foo_torch import Player, Resources
 
 
 def make_resources(m, c, d):
-    return Resources(torch.tensor([m, c, d], dtype=torch.float64))
+    return Resources(torch.tensor([m, c, d], dtype=torch.float64, device=torch.device("cuda")))
 
 
 @pytest.mark.parametrize(

@@ -17,7 +17,11 @@ class GridWorldEnv(gym.Env[torch.Tensor, Union[int, torch.Tensor]]):
     }
 
     def __init__(self, render_mode: Optional[str] = None, device: Optional[torch.device] = None):
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device is None:
+            if not torch.cuda.is_available():
+                raise RuntimeError("CUDA is required")
+            device = torch.device("cuda")
+        self.device = device
         self.player = Player(self.device)
         self.state = update_state(self.player)
 
@@ -56,7 +60,7 @@ class GridWorldEnv(gym.Env[torch.Tensor, Union[int, torch.Tensor]]):
             }
             reward_value = 0.0
 
-        obs = self.state.detach().cpu().numpy()
+        obs = self.state.detach().clone()
         return obs, reward_value, terminated, False, infos
 
     def reset(
@@ -70,7 +74,7 @@ class GridWorldEnv(gym.Env[torch.Tensor, Union[int, torch.Tensor]]):
         self.player = Player(self.device)
         self.state = update_state(self.player)
 
-        return self.state.detach().cpu().numpy(), {}
+        return self.state.detach().clone(), {}
 
     def updateState(self):
         self.state = update_state(self.player)

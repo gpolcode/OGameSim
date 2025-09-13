@@ -1,9 +1,11 @@
-import numpy as np
-import torch
 import ctypes
 import sys
 import pathlib
 import pytest
+import torch
+
+if not torch.cuda.is_available():
+    pytest.skip("CUDA is required", allow_module_level=True)
 
 np = pytest.importorskip("numpy")
 pythonnet = pytest.importorskip("pythonnet")
@@ -37,14 +39,14 @@ def test_parity_simple():
     torch_player = foo_torch.Player()
 
     cs_state = cs_update_state(cs_player)
-    torch_state = foo_torch.update_state(torch_player).cpu().numpy()
-    assert np.allclose(cs_state, torch_state)
+    torch_state = foo_torch.update_state(torch_player)
+    assert torch.allclose(torch.from_numpy(cs_state).to(torch_state.device), torch_state)
 
     for action in [0, 1, 2, 3, 4]:
         cs_result = CSFoo.ApplyAction(cs_player, action)
         reward_t, done_t = foo_torch.apply_action(torch_player, action)
         cs_state = cs_update_state(cs_player)
-        torch_state = foo_torch.update_state(torch_player).cpu().numpy()
+        torch_state = foo_torch.update_state(torch_player)
         assert abs(cs_result.Item1 - reward_t.item()) < 1e-5
         assert cs_result.Item2 == done_t
-        assert np.allclose(cs_state, torch_state)
+        assert torch.allclose(torch.from_numpy(cs_state).to(torch_state.device), torch_state)

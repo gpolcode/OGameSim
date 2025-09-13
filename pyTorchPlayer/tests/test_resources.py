@@ -1,11 +1,14 @@
 import pytest
 import torch
 
+if not torch.cuda.is_available():
+    pytest.skip("CUDA is required", allow_module_level=True)
+
 from ogame_env.foo_torch import Resources, ResourcesModifier
 
 
 def make_resources(metal, crystal, deuterium):
-    return Resources(torch.tensor([metal, crystal, deuterium], dtype=torch.float64))
+    return Resources(torch.tensor([metal, crystal, deuterium], dtype=torch.float64, device=torch.device("cuda")))
 
 
 @pytest.mark.parametrize(
@@ -52,6 +55,6 @@ def test_plus_operator_adds_resources():
 
 def test_mul_operator_multiplies_resources():
     subject = make_resources(23, 59, 131)
-    modifier = ResourcesModifier(torch.tensor([2, 7, 13], dtype=torch.float64))
+    modifier = ResourcesModifier(torch.tensor([2, 7, 13], dtype=torch.float64, device=torch.device("cuda")))
     result = subject * modifier
     assert result.values.tolist() == [46, 413, 1703]

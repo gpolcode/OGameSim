@@ -3,8 +3,11 @@ from dataclasses import dataclass, field
 from typing import List
 import torch
 
+if not torch.cuda.is_available():
+    raise RuntimeError("CUDA is required")
+
 # Constants for resource weight conversion
-RESOURCE_WEIGHTS = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float64)
+RESOURCE_WEIGHTS = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float64, device=torch.device("cuda"))
 
 # Utility functions
 
@@ -17,6 +20,8 @@ class Resources:
 
     @staticmethod
     def zeros(device=None):
+        if device is None:
+            device = torch.device("cuda")
         return Resources(torch.zeros(3, dtype=torch.float64, device=device))
 
     def clone(self):
@@ -215,7 +220,8 @@ class Player:
     device: torch.device
 
     def __init__(self, device=None):
-        device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device is None:
+            device = torch.device("cuda")
         self.device = device
         self.resources = Resources.zeros(device)
         self.points = torch.zeros(1, dtype=torch.float64, device=device)
@@ -264,11 +270,14 @@ _reward_distribution = 5_000_000
 _rewards = {}
 _max_value = 25.0
 _bucket_count = int(300_000_000 / _reward_distribution)
-_reward_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+_reward_device = torch.device("cuda")
 for i in range(_bucket_count):
     points = i * _reward_distribution
     value = _max_value / _bucket_count * i
-    _rewards[points] = {"value": torch.tensor(value, dtype=torch.float64, device=_reward_device), "redeemed": False}
+    _rewards[points] = {
+        "value": torch.tensor(value, dtype=torch.float64, device=_reward_device),
+        "redeemed": False,
+    }
 
 def get_exploration_reward(player: Player) -> torch.Tensor:
     bucket = math.floor(player.points.item() / _reward_distribution) * _reward_distribution
@@ -348,9 +357,21 @@ def update_state(player: Player) -> torch.Tensor:
     return state
 
 def get_player_stats(player: Player):
-    metal_levels = torch.tensor([p.metal_mine.level.item() for p in player.planets], dtype=torch.float64)
-    crystal_levels = torch.tensor([p.crystal_mine.level.item() for p in player.planets], dtype=torch.float64)
-    deut_levels = torch.tensor([p.deuterium_synthesizer.level.item() for p in player.planets], dtype=torch.float64)
+    metal_levels = torch.tensor(
+        [p.metal_mine.level.item() for p in player.planets],
+        dtype=torch.float64,
+        device=player.device,
+    )
+    crystal_levels = torch.tensor(
+        [p.crystal_mine.level.item() for p in player.planets],
+        dtype=torch.float64,
+        device=player.device,
+    )
+    deut_levels = torch.tensor(
+        [p.deuterium_synthesizer.level.item() for p in player.planets],
+        dtype=torch.float64,
+        device=player.device,
+    )
     return {
         "MetalMax": metal_levels.max().item(),
         "MetalAverage": metal_levels.mean().item(),

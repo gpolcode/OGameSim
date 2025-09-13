@@ -1,10 +1,14 @@
 import pytest
 import torch
+
+if not torch.cuda.is_available():
+    pytest.skip("CUDA is required", allow_module_level=True)
+
 from ogame_env.foo_torch import DeuteriumSynthesizer
 
 
 def build_synth(level, temp):
-    synth = DeuteriumSynthesizer(temp, torch.device("cpu"))
+    synth = DeuteriumSynthesizer(temp, torch.device("cuda"))
     for _ in range(level):
         synth.upgrade()
     return synth

@@ -1,10 +1,14 @@
 import pytest
 import torch
+
+if not torch.cuda.is_available():
+    pytest.skip("CUDA is required", allow_module_level=True)
+
 from ogame_env.foo_torch import Astrophysics
 
 
 def build(level):
-    tech = Astrophysics(torch.device("cpu"))
+    tech = Astrophysics(torch.device("cuda"))
     for _ in range(level):
         tech.upgrade()
     return tech
@@ -23,6 +27,7 @@ def build(level):
         (30, 78199045470, 156398090941, 78199045470),
     ],
 )
+
 def test_astrophysics_upgrade_cost(level, metal, crystal, deut):
     tech = build(level)
     cost = tech.upgrade_cost.values.tolist()

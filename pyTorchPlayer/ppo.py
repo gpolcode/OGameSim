@@ -96,7 +96,7 @@ def make_env(env_id, idx, capture_video, run_name):
     return thunk
 
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+def layer_init(layer, std=math.sqrt(2), bias_const=0.0):
     layer.weight.data = layer.weight.data.to("cuda:0")
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
@@ -107,14 +107,14 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 125)),
+            layer_init(nn.Linear(math.prod(envs.single_observation_space.shape), 125)),
             nn.Tanh(),
             layer_init(nn.Linear(125, 125)),
             nn.Tanh(),
             layer_init(nn.Linear(125, 1), std=1.0),
         )
         self.actor = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 125)),
+            layer_init(nn.Linear(math.prod(envs.single_observation_space.shape), 125)),
             nn.Tanh(),
             layer_init(nn.Linear(125, 125)),
             nn.Tanh(),
@@ -159,7 +159,6 @@ if __name__ == "__main__":
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
-    np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
@@ -224,40 +223,44 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
-            next_done = np.logical_or(terminations, truncations)
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
+            next_obs, reward, terminations, truncations, infos = envs.step(action)
+            next_done = torch.logical_or(
+                torch.as_tensor(terminations, device=device),
+                torch.as_tensor(truncations, device=device),
+            )
+            rewards[step] = torch.as_tensor(reward, device=device).view(-1)
+            next_obs = next_obs.to(device)
+            next_done = next_done.to(device)
 
             if "final_info" in infos:
                 info = infos["final_info"]
-                writer.add_scalar("charts/episodic_length_max", torch.from_numpy(info["episodic_length"]).max(), global_step)
-                writer.add_scalar("charts/episodic_length_mean", torch.from_numpy(info["episodic_length"]).mean(), global_step)
-                writer.add_scalar("charts/episodic_length_min", torch.from_numpy(info["episodic_length"]).min(), global_step)
+                writer.add_scalar("charts/episodic_length_max", torch.tensor(info["episodic_length"], device=device).max(), global_step)
+                writer.add_scalar("charts/episodic_length_mean", torch.tensor(info["episodic_length"], device=device).mean(), global_step)
+                writer.add_scalar("charts/episodic_length_min", torch.tensor(info["episodic_length"], device=device).min(), global_step)
 
-                writer.add_scalar("points/max", torch.from_numpy(info["points"]).max(), global_step)
-                writer.add_scalar("points/mean", torch.from_numpy(info["points"]).mean(), global_step)
-                writer.add_scalar("points/min", torch.from_numpy(info["points"]).min(), global_step)
+                writer.add_scalar("points/max", torch.tensor(info["points"], device=device).max(), global_step)
+                writer.add_scalar("points/mean", torch.tensor(info["points"], device=device).mean(), global_step)
+                writer.add_scalar("points/min", torch.tensor(info["points"], device=device).min(), global_step)
 
-                writer.add_scalar("astrophysics/max",  torch.from_numpy(info["astrophysics"]).max(), global_step)
-                writer.add_scalar("astrophysics/mean", torch.from_numpy(info["astrophysics"]).mean(), global_step)
-                writer.add_scalar("astrophysics/min",  torch.from_numpy(info["astrophysics"]).min(), global_step)
-                
-                writer.add_scalar("plasma_technology/max",  torch.from_numpy(info["plasma_technology"]).max(), global_step)
-                writer.add_scalar("plasma_technology/mean", torch.from_numpy(info["plasma_technology"]).mean(), global_step)
-                writer.add_scalar("plasma_technology/min",  torch.from_numpy(info["plasma_technology"]).min(), global_step)
-                
-                writer.add_scalar("metal/max", torch.from_numpy(info["metal_max"]).mean(), global_step)
-                writer.add_scalar("metal/mean", torch.from_numpy(info["metal_mean"]).mean(), global_step)
-                writer.add_scalar("metal/min", torch.from_numpy(info["metal_min"]).mean(), global_step)
-                
-                writer.add_scalar("crystal/max",  torch.from_numpy(info["crystal_max"]).mean(), global_step)
-                writer.add_scalar("crystal/mean", torch.from_numpy(info["crystal_mean"]).mean(), global_step)
-                writer.add_scalar("crystal/min",  torch.from_numpy(info["crystal_min"]).mean(), global_step)
-                
-                writer.add_scalar("deut/max",  torch.from_numpy(info["deut_max"]).mean(), global_step)
-                writer.add_scalar("deut/mean", torch.from_numpy(info["deut_mean"]).mean(), global_step)
-                writer.add_scalar("deut/min",  torch.from_numpy(info["deut_min"]).mean(), global_step)
+                writer.add_scalar("astrophysics/max",  torch.tensor(info["astrophysics"], device=device).max(), global_step)
+                writer.add_scalar("astrophysics/mean", torch.tensor(info["astrophysics"], device=device).mean(), global_step)
+                writer.add_scalar("astrophysics/min",  torch.tensor(info["astrophysics"], device=device).min(), global_step)
+
+                writer.add_scalar("plasma_technology/max",  torch.tensor(info["plasma_technology"], device=device).max(), global_step)
+                writer.add_scalar("plasma_technology/mean", torch.tensor(info["plasma_technology"], device=device).mean(), global_step)
+                writer.add_scalar("plasma_technology/min",  torch.tensor(info["plasma_technology"], device=device).min(), global_step)
+
+                writer.add_scalar("metal/max", torch.tensor(info["metal_max"], device=device).mean(), global_step)
+                writer.add_scalar("metal/mean", torch.tensor(info["metal_mean"], device=device).mean(), global_step)
+                writer.add_scalar("metal/min", torch.tensor(info["metal_min"], device=device).mean(), global_step)
+
+                writer.add_scalar("crystal/max",  torch.tensor(info["crystal_max"], device=device).mean(), global_step)
+                writer.add_scalar("crystal/mean", torch.tensor(info["crystal_mean"], device=device).mean(), global_step)
+                writer.add_scalar("crystal/min",  torch.tensor(info["crystal_min"], device=device).mean(), global_step)
+
+                writer.add_scalar("deut/max",  torch.tensor(info["deut_max"], device=device).mean(), global_step)
+                writer.add_scalar("deut/mean", torch.tensor(info["deut_mean"], device=device).mean(), global_step)
+                writer.add_scalar("deut/min",  torch.tensor(info["deut_min"], device=device).mean(), global_step)
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -284,13 +287,12 @@ if __name__ == "__main__":
         b_values = values.reshape(-1)
 
         # Optimizing the policy and value network
-        b_inds = np.arange(args.batch_size)
         clipfracs = []
         for epoch in range(args.update_epochs):
-            np.random.shuffle(b_inds)
+            permutation = torch.randperm(args.batch_size, device=device)
             for start in range(0, args.batch_size, args.minibatch_size):
                 end = start + args.minibatch_size
-                mb_inds = b_inds[start:end]
+                mb_inds = permutation[start:end]
 
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
@@ -337,9 +339,12 @@ if __name__ == "__main__":
             if args.target_kl is not None and approx_kl > args.target_kl:
                 break
 
-        y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
-        var_y = np.var(y_true)
-        explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+        y_pred, y_true = b_values, b_returns
+        var_y = torch.var(y_true)
+        if var_y.item() == 0:
+            explained_var = float("nan")
+        else:
+            explained_var = (1 - torch.var(y_true - y_pred) / var_y).item()
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
@@ -348,7 +353,7 @@ if __name__ == "__main__":
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
+        writer.add_scalar("losses/clipfrac", torch.tensor(clipfracs, device=device).mean(), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
