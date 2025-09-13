@@ -2,6 +2,7 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using OGameSim.Entities;
 
 namespace OGameSim.Production
@@ -227,15 +228,16 @@ namespace OGameSim.Production
 
             fixed (double* statePtr = states)
             {
-                for (int i = 0; i < players.Length; i++)
+                var basePtr = (IntPtr)statePtr;
+                Parallel.For(0, players.Length, i =>
                 {
                     var result = ApplyAction(players[i], actions[i]);
                     rewards[i] = result.Item1;
                     terminated[i] = result.Item2;
 
-                    var offsetPtr = new IntPtr(statePtr + (i * stateSize));
+                    var offsetPtr = IntPtr.Add(basePtr, i * stateSize * sizeof(double));
                     UpdateState(players[i], offsetPtr);
-                }
+                });
             }
 
             return (rewards, terminated);
