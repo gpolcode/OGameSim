@@ -166,8 +166,8 @@ if __name__ == "__main__":
     device = torch.device("cuda:0")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)],
+    envs = gym.vector.AsyncVectorEnv(
+        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -175,7 +175,13 @@ if __name__ == "__main__":
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
+    obs = (
+        torch.zeros(
+            (args.num_steps, args.num_envs) + envs.single_observation_space.shape
+        )
+        .pin_memory()
+        .to(device, non_blocking=True)
+    )
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -193,7 +199,9 @@ if __name__ == "__main__":
     global_step = 0
     start_time = time.time()
     next_obs, _ = envs.reset(seed=args.seed)
-    next_obs = torch.Tensor(next_obs).to(device)
+    next_obs = (
+        torch.from_numpy(next_obs).pin_memory().to(device, non_blocking=True)
+    )
     next_done = torch.zeros(args.num_envs).to(device)
 
     for iteration in range(1, args.num_iterations + 1):
@@ -224,10 +232,14 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            envs.step_async(action.cpu().numpy())
+            next_obs_np, reward, terminations, truncations, infos = envs.step_wait()
             next_done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
+            next_obs, next_done = (
+                torch.from_numpy(next_obs_np).pin_memory().to(device, non_blocking=True),
+                torch.from_numpy(next_done).to(device),
+            )
 
             if "final_info" in infos:
                 info = infos["final_info"]
