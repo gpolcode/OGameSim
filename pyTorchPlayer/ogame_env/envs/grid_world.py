@@ -17,7 +17,7 @@ class GridWorldEnv(gym.Env[torch.Tensor, Union[int, torch.Tensor]]):
     }
 
     def __init__(self, render_mode: Optional[str] = None, device: Optional[torch.device] = None):
-        self.device = device or torch.device("cpu")
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.player = Player(self.device)
         self.state = update_state(self.player)
 
@@ -56,7 +56,8 @@ class GridWorldEnv(gym.Env[torch.Tensor, Union[int, torch.Tensor]]):
             }
             reward_value = 0.0
 
-        return self.state.clone(), reward_value, terminated, False, infos
+        obs = self.state.detach().cpu().numpy()
+        return obs, reward_value, terminated, False, infos
 
     def reset(
         self,
@@ -69,7 +70,7 @@ class GridWorldEnv(gym.Env[torch.Tensor, Union[int, torch.Tensor]]):
         self.player = Player(self.device)
         self.state = update_state(self.player)
 
-        return self.state.clone(), {}
+        return self.state.detach().cpu().numpy(), {}
 
     def updateState(self):
         self.state = update_state(self.player)

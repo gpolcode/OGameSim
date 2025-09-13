@@ -215,7 +215,7 @@ class Player:
     device: torch.device
 
     def __init__(self, device=None):
-        device = device or torch.device("cpu")
+        device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = device
         self.resources = Resources.zeros(device)
         self.points = torch.zeros(1, dtype=torch.float64, device=device)
@@ -238,10 +238,10 @@ class Player:
         value = self.resources.convert_to_metal()
         cost_value = cost.convert_to_metal()
         remaining = value - cost_value
-        self.resources = Resources(torch.tensor([remaining, 0.0, 0.0], dtype=torch.float64, device=self.device))
-        self.points += torch.tensor([
-            cost.values[0] / 1000.0 + cost.values[1] / 1000.0 + cost.values[2] / 1000.0
-        ], device=self.device)
+        new_vals = torch.zeros(3, dtype=torch.float64, device=self.device)
+        new_vals[0] = remaining
+        self.resources = Resources(new_vals)
+        self.points += cost.values.sum() / 1000.0
         return True
 
     def proceed_to_next_day(self):
@@ -264,10 +264,11 @@ _reward_distribution = 5_000_000
 _rewards = {}
 _max_value = 25.0
 _bucket_count = int(300_000_000 / _reward_distribution)
+_reward_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 for i in range(_bucket_count):
     points = i * _reward_distribution
     value = _max_value / _bucket_count * i
-    _rewards[points] = {"value": torch.tensor(value, dtype=torch.float64), "redeemed": False}
+    _rewards[points] = {"value": torch.tensor(value, dtype=torch.float64, device=_reward_device), "redeemed": False}
 
 def get_exploration_reward(player: Player) -> torch.Tensor:
     bucket = math.floor(player.points.item() / _reward_distribution) * _reward_distribution
