@@ -204,5 +204,41 @@ namespace OGameSim.Production
                 AddResources(planet.DeuteriumSynthesizer.UpgradeIncreasePerDay, state);
             }
         }
+
+        public static unsafe (float[] Rewards, bool[] Terminated) StepBatch(
+            Player[] players,
+            long[] actions,
+            double[] states
+        )
+        {
+            const int stateSize = 125;
+            if (players.Length != actions.Length)
+            {
+                throw new ArgumentException("players/actions length mismatch");
+            }
+
+            if (states.Length != players.Length * stateSize)
+            {
+                throw new ArgumentException("states length mismatch");
+            }
+
+            var rewards = new float[players.Length];
+            var terminated = new bool[players.Length];
+
+            fixed (double* statePtr = states)
+            {
+                for (int i = 0; i < players.Length; i++)
+                {
+                    var result = ApplyAction(players[i], actions[i]);
+                    rewards[i] = result.Item1;
+                    terminated[i] = result.Item2;
+
+                    var offsetPtr = new IntPtr(statePtr + (i * stateSize));
+                    UpdateState(players[i], offsetPtr);
+                }
+            }
+
+            return (rewards, terminated);
+        }
     }
 }

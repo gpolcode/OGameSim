@@ -19,7 +19,7 @@ from OGameSim.Entities import *
 from OGameSim.Production import *
 
 import ctypes
-from System import IntPtr
+from System import IntPtr, Array, Int64, Double
 
 class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
     stepCounter = 0
@@ -38,10 +38,17 @@ class GridWorldEnv(gym.Env[np.ndarray, Union[int, np.ndarray]]):
         self.observation_space = spaces.Box(low=0.0, high=np.full((125,), np.inf), shape=(125,), dtype=np.float64)
 
     def step(self, action):
-        result = Foo.ApplyAction(self.player, action.item())
-        reward = result.Item1
-        terminated = result.Item2
-        self.updateState()
+        # Prepare arrays for the batch API
+        players = Array[Player]([self.player])
+        actions = Array[Int64]([int(np.asarray(action))])
+        state_buffer = Array[Double](self.state.tolist())
+
+        result = Foo.StepBatch(players, actions, state_buffer)
+
+        # copy updated state back to numpy array
+        self.state[:] = list(state_buffer)
+        reward = float(result.Item1[0])
+        terminated = bool(result.Item2[0])
 
         self.stepCounter += 1
 
