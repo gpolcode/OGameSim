@@ -10,10 +10,10 @@ from gymnasium.error import DependencyNotInstalled
 
 from pythonnet import load
 
-load("coreclr", runtime_config="/home/elsahr/ogamesim/pyTorchPlayer/game/runtimeconfig.json")
+load("coreclr", runtime_config="./pyTorchPlayer/runtimeconfig.json")
 
 import clr
-clr.AddReference("/home/elsahr/ogamesim/pyTorchPlayer/game/Game.dll")
+clr.AddReference("C:/Code/gpolcode/OGameSim/Game/bin/Release/net8.0/publish/Game")
 
 from OGameSim.Entities import *
 from OGameSim.Production import *

@@ -366,3 +366,5 @@ FodyWeavers.xsd
 .output/
 pyTorchPlayer/runs/*
 pyTorchPlayer/wandb/*
+runs/*
+wandb/*

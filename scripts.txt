@@ -1,31 +1,16 @@
-sudo docker run -it --cap-add=SYS_PTRACE  --security-opt seccomp=unconfined --ipc=host --shm-size 8G --device=/dev/dxg -v /usr/lib/wsl/lib/libdxcore.so:/usr/lib/libdxcore.so -v /opt/rocm/lib/libhsa-runtime64.so.1:/opt/rocm/lib/libhsa-runtime64.so.1 -v /home/elsahr/ogamesim:/home/elsahr/ogamesim rocm/pytorch:rocm6.2.3_ubuntu22.04_py3.10_pytorch_release_2.3.0
+## Setup rocm pytorch on windows
+https://www.reddit.com/r/ROCm/comments/1nffbzt/install_rocm_pytorch_on_windows_with_amd_radeon/
 
-dotnet publish -c Release -r linux-x64 -o "\\wsl.localhost\Ubuntu-22.04\home\elsahr\ogamesim\app" --self-contained
+Run https://docs.cleanrl.dev/get-started/installation/ but with "Run-UV pip install ."
+Run the first script again
 
-python3 -c 'import torch; print(torch.device("cuda"))'
-python3 -c 'import torch; print(torch.__file__)'
-
-cd /home/elsahr/ogamesim/app
-chmod +x ./RLMatrixPlayer
-./RLMatrixPlayer
-
-sudo usermod -aG render $(whoami)
-sudo usermod -aG video $(whoami)
-
-chmod -R 777 /usr/local/lib/
-
-
-Unhandled exception. System.InvalidOperationException: Torch device type CUDA did not initialise on the current machine. Trace from LoadNativeBackend:
-
-dotnet build C:\Code\gpolcode\OGameSim\RLMatrixPlayer\RLMatrixPlayer.csproj /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary /p:Configuration=Release /p:Platform="Any CPU"
-
-docker run -p 8888:8888 -p 6006:6006 --rm -v C:/a:/logdir tensorflow/tensorflow tensorboard --logdir /logdir --bind_all
+## Run
+."C:\Users\Elsahr\rocm-pytorch\.venv\Scripts\activate.ps1"
 
 https://gymnasium.farama.org/introduction/basic_usage/
 https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py
 https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy
 https://github.com/openai/gym/wiki/Table-of-environments
-https://rocm.docs.amd.com/projects/radeon/en/latest/docs/install/wsl/install-pytorch.html
 https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
 https://docs.cleanrl.dev/advanced/resume-training/?h=save#resume-training_1
 

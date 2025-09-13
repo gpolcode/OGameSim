@@ -9,10 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsolePlayer", "ConsolePlayer\ConsolePlayer.csproj", "{17187243-260E-4274-9893-9F4BD6EE14CA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TorchSharpPlayer", "TorchSharpPlayer\TorchSharpPlayer.csproj", "{AAE41B7E-CD34-4B18-8BFF-76C3CDE64A78}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RLMatrixPlayer", "RLMatrixPlayer\RLMatrixPlayer.csproj", "{F3590D0B-B373-40EB-8476-7B2A36957BF6}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,14 +27,6 @@ Global
 		{17187243-260E-4274-9893-9F4BD6EE14CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{17187243-260E-4274-9893-9F4BD6EE14CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{17187243-260E-4274-9893-9F4BD6EE14CA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AAE41B7E-CD34-4B18-8BFF-76C3CDE64A78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AAE41B7E-CD34-4B18-8BFF-76C3CDE64A78}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AAE41B7E-CD34-4B18-8BFF-76C3CDE64A78}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AAE41B7E-CD34-4B18-8BFF-76C3CDE64A78}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F3590D0B-B373-40EB-8476-7B2A36957BF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F3590D0B-B373-40EB-8476-7B2A36957BF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F3590D0B-B373-40EB-8476-7B2A36957BF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F3590D0B-B373-40EB-8476-7B2A36957BF6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -35,7 +35,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
     checkpoint_frequency: int = 1000
     """how often a checkpoint should be saved"""
-    load_checkpoint_path: str = "/home/elsahr/saved_models/" + '0.04_0.98_0.94_0.3_3000_4ba05211-8211-42f8-ba26-75806c7af321'#None 
+    load_checkpoint_path: str = "" # "/home/elsahr/saved_models/" + '0.04_0.98_0.94_0.3_3000_4ba05211-8211-42f8-ba26-75806c7af321'#None 
     """name of the checkpoint to load"""
     env_id: str = "ogame_env/GridWorld-v0"
     """the id of the environment"""
@@ -97,6 +97,7 @@ def make_env(env_id, idx, capture_video, run_name):
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    layer.weight.data = layer.weight.data.to("cuda:0")
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
@@ -162,7 +163,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    device = torch.device("cuda:0")
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
