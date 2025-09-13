@@ -390,9 +390,15 @@ if hasattr(torch, "compile"):
     try:
         apply_action = torch.compile(apply_action, mode="reduce-overhead")
         update_state = torch.compile(update_state, mode="reduce-overhead")
-    except Exception:  # pragma: no cover - compile may fail in some builds
+    except Exception:  # pragma: no cover - compilation may fail
+        try:
+            apply_action = torch.jit.script(apply_action)
+            update_state = torch.jit.script(update_state)
+        except Exception:  # pragma: no cover - TorchScript may also fail
+            pass
+else:  # pragma: no cover - ``torch.compile`` not available
+    try:
         apply_action = torch.jit.script(apply_action)
         update_state = torch.jit.script(update_state)
-else:  # pragma: no cover
-    apply_action = torch.jit.script(apply_action)
-    update_state = torch.jit.script(update_state)
+    except Exception:  # pragma: no cover
+        pass
