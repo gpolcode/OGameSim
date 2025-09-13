@@ -45,7 +45,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 4000
+    num_envs: int = 1
     """the number of parallel game environments"""
     num_steps: int = 25
     """the number of steps to run in each environment per policy rollout"""
@@ -166,8 +166,14 @@ if __name__ == "__main__":
     device = torch.device("cuda:0")
 
     # env setup
-    envs = gym.vector.AsyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    env_fns = [
+        make_env(args.env_id, i, args.capture_video, run_name)
+        for i in range(args.num_envs)
+    ]
+    envs = (
+        gym.vector.AsyncVectorEnv(env_fns)
+        if args.num_envs > 1
+        else gym.vector.SyncVectorEnv(env_fns)
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -232,8 +238,13 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            envs.step_async(action.cpu().numpy())
-            next_obs_np, reward, terminations, truncations, infos = envs.step_wait()
+            if args.num_envs > 1:
+                envs.step_async(action.cpu().numpy())
+                next_obs_np, reward, terminations, truncations, infos = envs.step_wait()
+            else:
+                next_obs_np, reward, terminations, truncations, infos = envs.step(
+                    action.cpu().numpy()
+                )
             next_done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = (
