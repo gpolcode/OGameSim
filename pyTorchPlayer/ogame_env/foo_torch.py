@@ -391,9 +391,16 @@ def get_player_stats(player: Player):
         "DeutMin": deut_levels.min().item(),
     }
 
-# JIT compile critical functions for improved performance.
-if not hasattr(torch, "compile"):
-    raise RuntimeError("torch.compile is required")
-
-apply_action = torch.compile(apply_action, mode="reduce-overhead")
-update_state = torch.compile(update_state, mode="reduce-overhead")
+# JIT compile critical functions for improved performance.  Fall back to
+# TorchScript if `torch.compile` is unavailable or fails (e.g. missing Triton
+# runtime) so importing this module never crashes.
+if hasattr(torch, "compile"):
+    try:
+        apply_action = torch.compile(apply_action, mode="reduce-overhead")
+        update_state = torch.compile(update_state, mode="reduce-overhead")
+    except Exception:  # pragma: no cover - best-effort compilation
+        apply_action = torch.jit.script(apply_action)
+        update_state = torch.jit.script(update_state)
+else:  # pragma: no cover - older torch versions
+    apply_action = torch.jit.script(apply_action)
+    update_state = torch.jit.script(update_state)
