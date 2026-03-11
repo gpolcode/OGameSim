@@ -1,78 +1,58 @@
 import torch
 from enum import IntEnum
 
-# ===========================================================================
-# 1. Define Indices (The "Schema")
-#    Using IntEnum allows you to use names in code, but ints in tensors.
-# ===========================================================================
-
 class GlobalIdx(IntEnum):
     """Indices for the global player state tensor."""
-    # Resources
-    Metal = 0
-    Crystal = 1
-    Deuterium = 2
-    Energy = 3
-    
     # Research Levels
     Astrophysics = 4
-    Plasma = 5
-    EnergyTech = 6
-    CombustionDrive = 7
+    PlasmaTechnology = 5
     
     # Player Stats
     Points = 8
+    Resources = 8
+    Day = 8
     
     # Size marker (keep this last)
     SIZE = 9
 
 class PlanetIdx(IntEnum):
     """Indices for the per-planet state tensor."""
-    # Mines
-    MetalMine = 0
-    CrystalMine = 1
-    DeutSynthesizer = 2
-    SolarPlant = 3
-    FusionReactor = 4
-    
-    # Facilities
-    Robotics = 5
-    Shipyard = 6
-    Nanite = 7
-    
-    # Attributes
-    Temperature = 8
-    FieldsUsed = 9
-    
+    MetalLevel = 0
+    MetalCost = 0
+    MetalTodaysProduction = 0
+    MetalIncreasePerDay = 0
+
+    CrystallLevel = 0
+    CrystallCost = 0
+    CrystallTodaysProduction = 0
+    CrystallIncreasePerDay = 0
+
+    DeuteriumSynthesizerLevel = 0
+    DeuteriumSynthesizerCost = 0
+    DeuteriumSynthesizerTodaysProduction = 0
+    DeuteriumSynthesizerIncreasePerDay = 0    
+
+    MaxTemperature = 6
+
     # Size marker
     SIZE = 10
 
-# ===========================================================================
-# 2. The State Wrapper (The "Coding Experience")
-#    This class wraps the tensors and exposes typed properties.
-#    IDEs like VS Code / PyCharm will autocomplete these properties.
-# ===========================================================================
-
-class OGameBatch:
-    def __init__(self, batch_size: int, device: torch.device = torch.device("cpu")):
-        self.batch_size = batch_size
-        self.device = device
-        self.max_planets = 15  # OGame max limit
-
-        # ALL data lives in these two tensors. 
-        # This ensures maximum cache locality and GPU throughput.
+class OGameBatch(torch.nn.Module):
+    def __init__(self, batch_size: int):
+        super().__init__()
+        self.max_planets = 20
         
         # Shape: (Batch, GlobalFeatures)
-        self.global_data = torch.zeros((batch_size, int(GlobalIdx.SIZE)), device=device)
+        self.global_data = torch.zeros((batch_size, int(GlobalIdx.SIZE)))
         
         # Shape: (Batch, MaxPlanets, PlanetFeatures)
-        self.planet_data = torch.zeros((batch_size, self.max_planets, int(PlanetIdx.SIZE)), device=device)
+        self.planet_data = torch.zeros((batch_size, self.max_planets, int(PlanetIdx.SIZE)))
 
-    # --- Global Properties (IntelliSense works here) ---
-
+    def forward(self, x):
+        return torch.nn.functional.relu(self.global_data)
+    
     @property
     def metal(self) -> torch.Tensor:
-        """Current Metal resources for all players."""
         return self.global_data[:, GlobalIdx.Metal]
 
     @metal.setter

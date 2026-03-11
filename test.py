@@ -1,6 +1,6 @@
 import torch
 
-from state import OGameBatch 
+from state import OGameBatch
 
 def test_apply_upgrades():
     # ARRANGE
