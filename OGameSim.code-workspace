@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"name": "Config",
+			"path": "."
+		},
+		{
+			"name": "C# Solution",
+			"path": "csharp"
+		},
+		{
+			"name": "Python Sim",
+			"path": "python"
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "${workspaceFolder:Python Sim}/.venv/bin/python",
+		"python.analysis.typeCheckingMode": "strict",
+		"python.testing.pytestArgs": [
+			"tests"
+		],
+		"python.testing.unittestEnabled": false,
+		"python.testing.pytestEnabled": true
+	}
+}
