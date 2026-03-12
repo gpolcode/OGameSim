@@ -16,6 +16,7 @@ Dieses Repo versucht die theoretische Punkteanzahl für das Browserspiel OGame z
 Roi: 266'316'720.384
 
 ## Input parameter
+
 player:  
 current mse  
 todays mse prod  
@@ -25,20 +26,20 @@ mse upgrade cost
 
 plasma:  
 mse upgrade cost  
-upgraded production mse  
+upgraded production mse delta  
 
 20x (all zero if unresearched)  
 metal:  
 mse upgrade cost  
-upgraded production mse  
+upgraded production mse delta  
 
 crystal:  
 mse upgrade cost  
-upgraded production mse  
+upgraded production mse delta  
 
 deut:  
 mse upgrade cost  
-upgraded production mse  
+upgraded production mse delta  
 
 ## actions
 proceed to next day  
