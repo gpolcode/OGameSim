@@ -16,40 +16,39 @@ Dieses Repo versucht die theoretische Punkteanzahl für das Browserspiel OGame z
 Roi: 266'316'720.384
 
 ## Input parameter
-player:
-current mse
-todays mse prod
+player:  
+current mse  
+todays mse prod  
 
-astro:
-mse upgrade cost
+astro:  
+mse upgrade cost  
 
-plasma:
-mse upgrade cost
-upgraded production mse
+plasma:  
+mse upgrade cost  
+upgraded production mse  
 
-20x
-n-planet (all zero if unresearched)
-metal:
-mse upgrade cost
-upgraded production mse
+20x (all zero if unresearched)  
+metal:  
+mse upgrade cost  
+upgraded production mse  
 
-crystal:
-mse upgrade cost
-upgraded production mse
+crystal:  
+mse upgrade cost  
+upgraded production mse  
 
-deut:
-mse upgrade cost
-upgraded production mse
+deut:  
+mse upgrade cost  
+upgraded production mse  
 
 ## actions
-proceed to next day
-astro upgrade
-plasma upgrade
+proceed to next day  
+astro upgrade  
+plasma upgrade  
 
-20x
-n-planet metal upgrade
-n-planet crystal upgrade
-n-planet deut upgrade
+20x  
+n-planet metal upgrade  
+n-planet crystal upgrade  
+n-planet deut upgrade  
 
 ## Termination
 8000days
