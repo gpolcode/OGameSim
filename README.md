@@ -17,6 +17,39 @@ Roi: 266'316'720.384
 
 ## Input parameter
 
+### TorchRL
+
+player:  
+current mse  
+todays mse prod  
+
+astro:  
+level  
+mse upgrade cost  
+
+plasma:   
+level  
+mse upgrade cost  
+upgraded production mse delta  
+
+20x (all zero if unresearched)  
+metal:   
+level  
+mse upgrade cost  
+upgraded production mse delta  
+
+crystal:   
+level  
+mse upgrade cost  
+upgraded production mse delta  
+
+deut:   
+level  
+mse upgrade cost  
+upgraded production mse delta 
+
+### pyTorchPlayer
+
 player:  
 current mse  
 todays mse prod  
