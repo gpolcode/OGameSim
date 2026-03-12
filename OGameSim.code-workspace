@@ -14,7 +14,6 @@
 		}
 	],
 	"settings": {
-		"python.defaultInterpreterPath": "${workspaceFolder:Python Sim}/.venv/bin/python",
 		"python.analysis.typeCheckingMode": "strict",
 		"python.testing.pytestArgs": [
 			"tests"
