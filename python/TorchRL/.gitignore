@@ -1,0 +1,6 @@
+# Output Files
+outputs/*
+pyTorchPlayer/runs/*
+pyTorchPlayer/wandb/*
+runs/*
+wandb/*
