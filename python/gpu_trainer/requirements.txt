@@ -16,8 +16,11 @@ tensordict==0.13.0
 # --- torch-independent plumbing ---
 gymnasium
 tyro
-wandb
 tensorboard
+pytest
+
+# NOTE: wandb is intentionally not listed — monitoring is TensorBoard only (train.py logs the
+# headline "final points per episode" plus losses/throughput to a SummaryWriter).
 
 # NOTE: rl_games (the fallback trainer, CONCEPT.md §5) is intentionally NOT listed here — its
 # dependency tree can pull a non-ROCm torch. If you pursue it, install it in a throwaway step and
