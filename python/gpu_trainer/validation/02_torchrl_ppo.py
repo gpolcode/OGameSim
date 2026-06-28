@@ -11,10 +11,10 @@ It is ALSO the template that fixes the earlier TorchRL attempt. The two things t
 Both are done correctly here. `check_env_specs(env)` is called up front to validate (1); the
 branchless `_step` handles (2).
 
-Run inside the ROCm container. To check the "fully compiled" property, run with graph-break logs:
-    TORCH_LOGS=graph_breaks python validation/02_torchrl_ppo.py
-    python validation/02_torchrl_ppo.py --no-compile      # skip torch.compile
-    python validation/02_torchrl_ppo.py --device cpu       # logic-only sanity check anywhere
+Run inside the ROCm container:
+    python validation/02_torchrl_ppo.py                                    # GPU-resident PPO
+    TORCH_LOGS=graph_breaks python validation/02_torchrl_ppo.py --compile  # audit graph breaks
+    python validation/02_torchrl_ppo.py --device cpu                       # logic-only sanity check
 
 Pass criteria (CONCEPT.md §9): ~100 updates run, loss moves, `rocm-smi` shows GPU utilization,
 the process is not CPU-bound, and (with --compile) the policy reports zero graph breaks.
@@ -47,7 +47,10 @@ from torchrl.envs.utils import ExplorationType, check_env_specs, set_exploration
 from torchrl.modules import MLP, ProbabilisticActor, ValueOperator
 from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
-from torchrl.collectors import SyncDataCollector
+try:  # torchrl >= 0.13 renamed SyncDataCollector -> Collector
+    from torchrl.collectors import Collector
+except ImportError:  # torchrl < 0.13
+    from torchrl.collectors import SyncDataCollector as Collector
 from torchrl.data.replay_buffers import (
     ReplayBuffer,
     LazyTensorStorage,
@@ -205,9 +208,9 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=4)
     ap.add_argument("--minibatch", type=int, default=2048)
     ap.add_argument("--lr", type=float, default=3e-4)
-    ap.add_argument("--compile", dest="compile", action="store_true", default=True,
-                    help="torch.compile the policy (default on; checks the 'fully compiled' goal)")
-    ap.add_argument("--no-compile", dest="compile", action="store_false")
+    ap.add_argument("--compile", dest="compile", action="store_true", default=False,
+                    help="torch.compile the policy to audit the 'fully compiled' goal "
+                         "(off by default; can be finicky on bleeding-edge torch/torchrl)")
     args = ap.parse_args()
 
     print("== TorchRL PPO on a batched GPU env (validation step 5) ==\n")
@@ -251,13 +254,12 @@ def main() -> None:
     frames_per_batch = args.num_envs * args.rollout
     total_frames = frames_per_batch * args.iters
 
-    collector = SyncDataCollector(
+    collector = Collector(
         env,
         policy,
         frames_per_batch=frames_per_batch,
         total_frames=total_frames,
-        device=device,
-        storing_device=device,            # keep rollouts on the GPU — no CPU round-trip
+        device=device,                    # run + store rollouts on the GPU — no CPU round-trip
     )
 
     advantage = GAE(gamma=0.99, lmbda=0.95, value_network=value, average_gae=True)

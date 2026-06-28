@@ -33,11 +33,15 @@ if command -v getsebool >/dev/null 2>&1; then
 fi
 
 echo "Launching ${IMAGE} with GPU passthrough; repo mounted at /workspace ..."
+# Note: '--ipc=host' already shares the host's /dev/shm, so do NOT add '--shm-size' — Podman
+# rejects the two together ("cannot set shmsize when running in the host IPC Namespace").
+# 'HIP_VISIBLE_DEVICES=0' pins the discrete 7900 XTX (an iGPU may otherwise show up as cuda:1).
 exec podman run --rm -it \
   --device /dev/kfd --device /dev/dri \
   --group-add keep-groups \
-  --ipc=host --shm-size 8G \
+  --ipc=host \
   --security-opt seccomp=unconfined --cap-add SYS_PTRACE \
+  -e HIP_VISIBLE_DEVICES=0 \
   -v "${REPO_ROOT}":/workspace:Z \
   -w /workspace/python/gpu_trainer \
   "${IMAGE}"

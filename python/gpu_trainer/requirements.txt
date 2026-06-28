@@ -1,24 +1,24 @@
-# Python deps for the GPU-resident training loop, layered ON TOP of the rocm/pytorch base image.
+# Python deps layered ON TOP of the rocm/pytorch base image's ROCm (HIP) torch build.
 #
-# !!! DO NOT add `torch` / `torchvision` / `torchaudio` here. !!!
-# The rocm/pytorch image already ships a ROCm (HIP) build of torch. Installing torch from PyPI
-# would pull a CUDA/CPU wheel and clobber the ROCm build — then torch.version.hip becomes None
-# and the GPU disappears.
+# !!! DO NOT add torch / torchvision / torchaudio here. !!!
+# The base image already ships a ROCm build of torch. The Containerfile installs this file with a
+# pip *constraint* pinning torch to the exact build already present (`-c torch-constraint.txt`),
+# so pip pulls torchrl/tensordict + their deps but can NEVER swap out the ROCm torch. (Installing
+# torch from PyPI would replace it with a CUDA/CPU wheel and torch.version.hip would become None.)
 #
-# Version coupling: torchrl + tensordict must match the base image's torch version. If
-# validation/02_torchrl_ppo.py fails importing spec classes (Composite/Unbounded/Categorical),
-# it is almost always torchrl<->torch version skew, not a logic bug. Pin to versions known-good
-# for your image's torch (check `python -c "import torch; print(torch.__version__)"` first).
+# Versions below are the ones validated on the box (torch 2.10.0+rocm7.2.4, RX 7900 XTX, 2026-06).
+# If you upgrade the base image's torch, bump these to the matching torchrl/tensordict release.
 
-# --- primary trainer (recommended path) ---
-torchrl>=0.6
-tensordict>=0.6
+# --- primary trainer: TorchRL (reuse ClipPPOLoss + GAE + Collector; see CONCEPT.md §5) ---
+torchrl==0.13.2
+tensordict==0.13.0
 
-# --- fallback trainer (turnkey YAML runner; see CONCEPT.md §5) ---
-rl_games>=1.6
-
-# --- env API + experiment plumbing (already used by ../pyTorchPlayer) ---
-gymnasium>=0.29
+# --- torch-independent plumbing ---
+gymnasium
 tyro
 wandb
 tensorboard
+
+# NOTE: rl_games (the fallback trainer, CONCEPT.md §5) is intentionally NOT listed here — its
+# dependency tree can pull a non-ROCm torch. If you pursue it, install it in a throwaway step and
+# re-check `torch.version.hip` afterwards.

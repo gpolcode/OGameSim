@@ -33,23 +33,39 @@ podman build -t ogamesim-gpu -f Containerfile .
 rocminfo | grep -i gfx                    # expect gfx1100
 rocm-smi                                  # expect the 7900 XTX
 
-python validation/00_gpu_smoke.py                          # step 3
-python validation/01_batched_env.py                        # step 4
-TORCH_LOGS=graph_breaks python validation/02_torchrl_ppo.py  # step 5
+python validation/00_gpu_smoke.py        # step 3
+python validation/01_batched_env.py      # step 4
+python validation/02_torchrl_ppo.py      # step 5  (add --compile for the graph-break audit)
 ```
 
 Each script prints a clear `PASS` / `FAIL` and exits non-zero on failure. **Stop at the first
 failure** and fix it before moving on. See `CONCEPT.md` §9 for the pass criteria and §10 for known
 gotchas (e.g. pin a `rocm/pytorch` tag if step 3 hangs).
 
+> Validated on a Bazzite + RX 7900 XTX box (2026-06): the base image ships **torch 2.10.0+rocm7.2.4**;
+> steps 3–4 pass; the RL libs are **`torchrl==0.13.2` / `tensordict==0.13.0`**.
+
+## Developing inside the GPU container (implementation phase)
+
+Once the ladder is green, do the actual env port with **Claude Code running inside the container**
+(direct GPU + repo access). See `CONCEPT.md` §11.
+
+```bash
+cd python/gpu_trainer
+podman build -t ogamesim-dev -f Containerfile.dev .
+./run-dev.sh            # then run `claude` inside; login persists in ~/.config/ogamesim-claude
+```
+
 ## Files
 
 | File | Purpose |
 |---|---|
 | `CONCEPT.md` | The design document — read this first. |
-| `Containerfile` | `rocm/pytorch` base + `torchrl`, `tensordict`, `rl_games`, etc. |
-| `run-container.sh` | `podman run` wrapper with the correct GPU-passthrough flags for Bazzite. |
-| `requirements.txt` | Python deps layered on top of the base image's ROCm torch (do **not** pip-install torch). |
+| `Containerfile` | Runtime image: `rocm/pytorch` base + `torchrl`/`tensordict` (torch-constrained install). |
+| `Containerfile.dev` | Dev image: the runtime + Node.js + Claude Code, for working *inside* the GPU container. |
+| `run-container.sh` | `podman run` wrapper (GPU passthrough) for the validation ladder. |
+| `run-dev.sh` | `podman run` wrapper for the dev container, with persisted Claude login. |
+| `requirements.txt` | Python deps layered on the base image's ROCm torch (do **not** pip-install torch). |
 | `validation/00_gpu_smoke.py` | Is ROCm/PyTorch alive? Device, `torch.version.hip`, a large matmul stability check. |
 | `validation/01_batched_env.py` | A tiny batched, branchless, on-GPU env. Proves no per-step host sync. |
 | `validation/02_torchrl_ppo.py` | The reusable TorchRL PPO loop on that env. The template the real env must satisfy. |

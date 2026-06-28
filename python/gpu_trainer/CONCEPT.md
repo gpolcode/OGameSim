@@ -215,8 +215,9 @@ groups   # confirm your user is in 'render' and 'video'
 podman run --rm -it \
   --device /dev/kfd --device /dev/dri \
   --group-add keep-groups \
-  --ipc=host --shm-size 8G \
+  --ipc=host \
   --security-opt seccomp=unconfined --cap-add SYS_PTRACE \
+  -e HIP_VISIBLE_DEVICES=0 \
   -v "$PWD":/workspace:Z \
   rocm/pytorch:latest
 ```
@@ -224,8 +225,13 @@ podman run --rm -it \
 - `/dev/kfd` = ROCm/HIP compute interface; `/dev/dri` = render nodes.
 - `--group-add keep-groups` preserves the host's `render`/`video` GIDs **inside** the container.
   It needs the **`crun`** runtime (Bazzite's default). With `runc` it silently fails and you get
-  permission-denied on `/dev/kfd`.
-- `--ipc=host --shm-size 8G` for torch dataloaders; `:Z` relabels the mount for SELinux.
+  permission-denied on `/dev/kfd`. (On Bazzite the GPU nodes are often mode `0666`, so this can be
+  a no-op in practice — but keep it; it's correct on stricter setups.)
+- `--ipc=host` shares the host's `/dev/shm` for torch dataloaders. **Do not also pass
+  `--shm-size`** — Podman rejects the two together (*"cannot set shmsize when running in the host
+  IPC Namespace"*). `:Z` relabels the mount for SELinux.
+- `-e HIP_VISIBLE_DEVICES=0` pins the **discrete** 7900 XTX. On a Ryzen CPU with an integrated GPU,
+  ROCm enumerates the iGPU too (it shows up as `cuda:1`); this keeps everything on the dGPU.
 
 **Why not a VM / VFIO passthrough?** You have a single GPU that also drives your display. Binding
 the 7900 XTX (Navi 31) to `vfio-pci` blacks out the host, requires display-manager teardown hooks,
@@ -250,6 +256,11 @@ container.
 - **The device is `"cuda"`.** The ROCm build maps the `torch.cuda` API onto AMD GPUs via HIP. Use
   `device='cuda'` and `torch.cuda.is_available()` exactly as on NVIDIA; confirm you're on a ROCm
   build with `torch.version.hip` being **non-`None`**.
+- **Confirmed on this box (2026-06).** `rocm/pytorch:latest` shipped **torch 2.10.0+rocm7.2.4**
+  (`torch.version.hip = 7.2.53211`); `cuda:0` is the **RX 7900 XTX**, and the 9800X3D's iGPU shows
+  as `cuda:1` (hence `HIP_VISIBLE_DEVICES=0`). The matching RL libs are **`torchrl==0.13.2` /
+  `tensordict==0.13.0`**, installed under a torch constraint so the ROCm build is never replaced
+  (see `requirements.txt` / `Containerfile`).
 
 ---
 
@@ -273,16 +284,17 @@ container.
 Run in order; **stop and fix at the first failure** — do not start the economy port (phase c)
 until step 5 passes. Files are in `validation/`.
 
-| # | Command | Pass criteria |
-|---|---|---|
-| 1 | `ls -l /dev/kfd /dev/dri/renderD128` ; `groups` | devices exist; user in `render`,`video` |
-| 2 | build/enter container, then `rocminfo \| grep -i gfx` ; `rocm-smi` | shows `gfx1100` and the 7900 XTX |
-| 3 | `python validation/00_gpu_smoke.py` | `cuda` available, `torch.version.hip` non-`None`, correct device name, 8192² matmul completes (catches gfx1100 hangs → pin a tag if it stalls) |
-| 4 | `python validation/01_batched_env.py` | env steps fully on `cuda`; **no per-step host sync** (enforced via `torch.cuda.set_sync_debug_mode("error")`) |
-| 5 | `TORCH_LOGS=graph_breaks python validation/02_torchrl_ppo.py` | ~100 PPO updates, loss moves, `rocm-smi` shows GPU util, process not CPU-bound, **zero graph breaks** |
+| # | Command | Pass criteria | Status (2026-06, RX 7900 XTX) |
+|---|---|---|---|
+| 1 | `ls -l /dev/kfd /dev/dri/renderD128` ; `groups` | device nodes exist (on Bazzite often mode `0666`) | ✅ |
+| 2 | build/enter container, then `rocminfo \| grep -i gfx` ; `rocm-smi` | shows `gfx1100` and the 7900 XTX | ✅ |
+| 3 | `python validation/00_gpu_smoke.py` | `cuda` available, `torch.version.hip` non-`None`, correct device name, 8192² matmul completes (catches gfx1100 hangs → pin a tag if it stalls) | ✅ torch 2.10/rocm7.2.4 |
+| 4 | `python validation/01_batched_env.py` | env steps fully on `cuda`; **no per-step host sync** (enforced via `torch.cuda.set_sync_debug_mode("error")`) | ✅ ~28 M env-steps/s |
+| 5 | `python validation/02_torchrl_ppo.py` | ~100 PPO updates, loss moves, `rocm-smi` shows GPU util, process not CPU-bound | torchrl 0.13.2 |
+| 5b | `TORCH_LOGS=graph_breaks python validation/02_torchrl_ppo.py --compile` | **zero graph breaks** with the policy compiled (the "fully compiled" goal) | optional |
 
-Steps 4–5 define the *contract* the real OGame env must satisfy: batched, branchless,
-graph-break-free, GPU-resident.
+Steps 4–5 define the *contract* the real OGame env must satisfy: batched, branchless, GPU-resident
+(and, with `--compile`, graph-break-free).
 
 ---
 
@@ -299,3 +311,31 @@ graph-break-free, GPU-resident.
   image's torch version (see `requirements.txt`). If `02_torchrl_ppo.py` errors on spec classes,
   it's almost always a version-skew issue, not a logic bug.
 - **Parity** — the economy port is only trustworthy with the C# ↔ torch parity test (phase c).
+
+---
+
+## 11. Developing inside the GPU container (Claude Code)
+
+For the implementation phase, run Claude Code **inside** the ROCm container so it can edit the repo
+*and* run GPU training directly (no copy/paste relay). Two files provide this:
+
+- **`Containerfile.dev`** — the runtime image + Node.js + `@anthropic-ai/claude-code`.
+- **`run-dev.sh`** — launches it with the validated GPU flags, the repo at `/workspace`, and a
+  **persisted Claude login** (`CLAUDE_CONFIG_DIR` on a mounted host dir) so you authenticate once.
+
+```bash
+cd python/gpu_trainer
+podman build -t ogamesim-dev -f Containerfile.dev .
+./run-dev.sh
+# inside the container:
+claude            # first run: device-code login (open the URL on the host, paste the code back)
+                  #   alternative:  export ANTHROPIC_API_KEY=...   before running claude
+```
+
+Notes:
+- **Auth persistence** — login/config is stored in `~/.config/ogamesim-claude` on the host (mounted
+  to `/claude-config`), so it survives `--rm` and container rebuilds, and never lands in git.
+- **File ownership** — rootless Podman maps container-root → your host user, so files Claude writes
+  to `/workspace` stay owned by you with correct git ownership.
+- **Scope** — keep the *container* as the disposable runtime; the persisted login is the only state
+  that outlives it. Rebuild the image freely (e.g. to bump `torchrl`).
