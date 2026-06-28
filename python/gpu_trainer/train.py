@@ -31,6 +31,10 @@ try:
 except ImportError:  # pragma: no cover
     pass
 from tensordict.nn import TensorDictModule
+try:
+    from tensordict.nn import CudaGraphModule
+except ImportError:  # pragma: no cover
+    CudaGraphModule = None
 from torchrl.envs.utils import ExplorationType, check_env_specs
 from torchrl.modules import MLP, ProbabilisticActor, ValueOperator, MaskedCategorical
 from torchrl.objectives import ClipPPOLoss
@@ -39,11 +43,52 @@ try:  # torchrl >= 0.13 renamed SyncDataCollector -> Collector
     from torchrl.collectors import Collector
 except ImportError:  # pragma: no cover
     from torchrl.collectors import SyncDataCollector as Collector
-from torchrl.data.replay_buffers import ReplayBuffer, LazyTensorStorage, SamplerWithoutReplacement
 from torch.utils.tensorboard import SummaryWriter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ogame.env import OGameTensorEnv  # noqa: E402
+from tensordict import TensorDict, is_tensor_collection  # noqa: E402
+
+
+class SyncFreeGAE(GAE):
+    """GAE without the per-iteration host sync.
+
+    Stock ``_call_value_nets`` runs ``_sanitize_next_obs_nan`` which does ``if not nan_mask.any(): ...``
+    — a GPU->CPU sync every iteration. This env never emits NaN next-observations (log1p of
+    non-negative magnitudes, then standardized), so the sanitization is a no-op we can skip."""
+
+    def _sanitize_next_obs_nan(self, data, in_keys):
+        return data
+
+
+class GraphSafeClipPPOLoss(ClipPPOLoss):
+    """ClipPPOLoss whose entropy path has no host sync, so the whole update is CUDA-graph capturable.
+
+    Stock ``_get_entropy`` does ``if not entropy.isfinite().all(): ...`` — a data-dependent branch that
+    is illegal during HIP/CUDA-graph capture. The analytic entropy of a ``MaskedCategorical`` is always
+    finite, so we return it directly (same output shaping as the parent)."""
+
+    def _get_entropy(self, dist, adv_shape):
+        entropy = dist.entropy()
+        if is_tensor_collection(entropy) and entropy.batch_size != adv_shape:
+            entropy.batch_size = adv_shape
+        return entropy.unsqueeze(-1)
+
+
+@torch.no_grad()
+def estimate_obs_stats(env, n_steps):
+    """Per-dim mean/std of the (log1p-compressed) observation from a short random rollout.
+
+    Run on-device. The scale floor (1.0) keeps rarely-varying dims (e.g. planets that unlock only
+    later in training) from exploding once they switch on — log1p obs are already O(1-20)."""
+    td = env.reset()
+    acc = []
+    for _ in range(n_steps):
+        td.set("action", torch.randint(0, env.N_ACTIONS, (env.num_envs,), device=env.device))
+        td = env.step(td)["next"]
+        acc.append(td.get("observation"))
+    obs = torch.stack(acc).reshape(-1, env.OBS_DIM)
+    return obs.mean(0), obs.std(0).clamp_min(1.0)
 
 
 def build_policy_and_value(env, device, hidden):
@@ -73,7 +118,7 @@ def build_policy_and_value(env, device, hidden):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
-    ap.add_argument("--num-envs", type=int, default=4096)
+    ap.add_argument("--num-envs", type=int, default=16384)
     ap.add_argument("--rollout", type=int, default=16, help="env steps per collected batch")
     ap.add_argument("--iters", type=int, default=1000)
     ap.add_argument("--epochs", type=int, default=8)
@@ -85,11 +130,37 @@ def main() -> None:
     ap.add_argument("--gamma", type=float, default=0.999)
     ap.add_argument("--gae-lambda", type=float, default=0.95)
     ap.add_argument("--clip-epsilon", type=float, default=0.2)
-    ap.add_argument("--entropy-coeff", type=float, default=0.01)
+    ap.add_argument("--entropy-coeff", type=float, default=0.03, help="entropy coeff at start of training")
     ap.add_argument("--critic-coeff", type=float, default=0.5)
     ap.add_argument("--reward-mode", default="points", choices=["points", "ogame"])
     ap.add_argument("--no-exploration-bonus", dest="exploration_bonus", action="store_false", default=True)
+    # points mode: the raw bucket bonus (~700/episode) swamps the log10-points base (~8); scale it down
+    # (0 = pure telescoping-points objective + policy exploration). ogame mode ignores this (stays exact).
+    ap.add_argument("--exploration-weight", type=float, default=0.0)
+    # observation conditioning: log1p-compress (raw MSE reach ~3e8) then standardize to ~N(0,1)
+    ap.add_argument("--no-log-obs", dest="log_obs", action="store_false", default=True)
+    ap.add_argument("--no-obs-norm", dest="obs_norm", action="store_false", default=True)
+    ap.add_argument("--obs-norm-steps", type=int, default=200, help="random steps to estimate obs stats")
+    # schedules (CleanRL-style linear anneal)
+    ap.add_argument("--no-anneal-lr", dest="anneal_lr", action="store_false", default=True)
+    ap.add_argument("--no-anneal-entropy", dest="anneal_entropy", action="store_false", default=True)
+    ap.add_argument("--entropy-final", type=float, default=0.0, help="entropy coeff at end of training")
+    ap.add_argument("--lr-final-frac", type=float, default=0.0, help="final LR = lr * this fraction")
+    ap.add_argument("--metrics-every", type=int, default=10, help="iters between host-sync metric reads")
     ap.add_argument("--compile", action="store_true", default=False)
+    # Fully GPU-resident hot loop (default ON for cuda): a custom sync-free rollout (no collector
+    # any_done host-sync) + a compiled PPO update over a GPU randperm minibatcher. Zero CPU compute /
+    # zero host-device syncs per iter (verify with --prove-no-sync). Auto-off on cpu. --no-full-compile
+    # falls back to the stock TorchRL Collector path.
+    ap.add_argument("--no-full-compile", dest="full_compile", action="store_false", default=True)
+    # CUDA-graph the PPO update (lowest launch overhead, best small-N SPS). On ROCm this can HSA-fault
+    # at large num_envs due to allocation churn vs the captured pool, so it's disabled past --cudagraph-max-envs.
+    ap.add_argument("--no-update-cudagraph", dest="update_cudagraph", action="store_false", default=True)
+    ap.add_argument("--cudagraph-max-envs", type=int, default=8192,
+                    help="auto-disable the update cudagraph above this num_envs (ROCm stability)")
+    # hard proof that the hot loop touches the CPU for nothing: error on ANY host-device sync for a
+    # window of steady-state iters (collection + GAE + compiled update). Metrics are muted in-window.
+    ap.add_argument("--prove-no-sync", action="store_true", default=False)
     # default mode audits graph breaks cleanly; "reduce-overhead" (CUDA graphs) reuses the policy
     # output buffer and conflicts with the collector unless step boundaries are marked — opt-in only.
     ap.add_argument("--compile-mode", default="default",
@@ -106,47 +177,99 @@ def main() -> None:
         sys.exit(1)
     device = torch.device(args.device)
 
-    env = OGameTensorEnv(
+    raw_env = OGameTensorEnv(
         args.num_envs, device=device,
         reward_mode=args.reward_mode, exploration_bonus=args.exploration_bonus,
+        exploration_weight=args.exploration_weight, log_obs=args.log_obs,
     )
     print(f"device   : {device}")
-    print(f"num_envs : {args.num_envs}   obs_dim: {env.OBS_DIM}   n_actions: {env.N_ACTIONS}   "
-          f"reward_mode: {args.reward_mode}")
+    print(f"num_envs : {args.num_envs}   obs_dim: {raw_env.OBS_DIM}   n_actions: {raw_env.N_ACTIONS}   "
+          f"reward_mode: {args.reward_mode}   log_obs: {args.log_obs}   "
+          f"explore_w: {raw_env.exploration_weight}")
+
+    # standardize observations to ~N(0,1) so the Tanh MLP isn't saturated (log1p already in env).
+    # Folded INTO the env (branchless, on-device) rather than a TorchRL transform, which would sync
+    # every step (its `if self.standard_normal:` on a tensor buffer). Estimate stats first, then install.
+    if args.obs_norm:
+        loc, scale = estimate_obs_stats(raw_env, args.obs_norm_steps)
+        raw_env.set_obs_norm(loc, scale)
+        print(f"obs_norm : in-env standardization over {args.obs_norm_steps} random steps "
+              f"(loc {float(loc.mean()):.2f}, scale {float(scale.mean()):.2f})")
+    env = raw_env
 
     print("\nchecking env specs (check_env_specs) ...", flush=True)
     check_env_specs(env)
     print("  specs OK — valid, batched, on-device TorchRL environment.")
 
-    policy, value = build_policy_and_value(env, device, [args.hidden, args.hidden])
+    policy, value = build_policy_and_value(raw_env, device, [args.hidden, args.hidden])
 
-    if args.compile and device.type == "cuda":
-        try:
-            policy = torch.compile(policy, mode=args.compile_mode)
-            print(f"policy   : torch.compile(mode='{args.compile_mode}') enabled "
-                  "(run with TORCH_LOGS=graph_breaks to audit)")
-        except Exception as exc:  # noqa: BLE001
-            print(f"[WARN] torch.compile failed ({exc!r}); continuing uncompiled.")
+    full_compile = args.full_compile and device.type == "cuda"
+    if full_compile and CudaGraphModule is None:
+        print("[WARN] --full-compile requested but CudaGraphModule unavailable; falling back.")
+        full_compile = False
 
     frames_per_batch = args.num_envs * args.rollout
     total_frames = frames_per_batch * args.iters
     collector_kwargs = dict(frames_per_batch=frames_per_batch, total_frames=total_frames, device=device)
-    try:
-        collector = Collector(env, policy, auto_register_policy_transforms=False, **collector_kwargs)
-    except TypeError:
-        collector = Collector(env, policy, **collector_kwargs)
 
-    advantage = GAE(gamma=args.gamma, lmbda=args.gae_lambda, value_network=value, average_gae=True)
-    loss_module = ClipPPOLoss(
+    # --- collection ---
+    # full_compile: a custom GPU-resident rollout (below) that NEVER calls the TorchRL collector's
+    # maybe_reset/any_done (a per-step host sync). Otherwise: the stock Collector, optionally compiled.
+    collector = None
+    if full_compile:
+        if args.compile:
+            policy = torch.compile(policy, mode=args.compile_mode)
+        print(f"collect  : custom sync-free GPU rollout"
+              + (f", compiled policy (mode='{args.compile_mode}')" if args.compile else ", eager policy"))
+    else:
+        if args.compile and device.type == "cuda":
+            try:
+                policy = torch.compile(policy, mode=args.compile_mode)
+                print(f"policy   : torch.compile(mode='{args.compile_mode}') enabled "
+                      "(run with TORCH_LOGS=graph_breaks to audit)")
+            except Exception as exc:  # noqa: BLE001
+                print(f"[WARN] torch.compile failed ({exc!r}); continuing uncompiled.")
+        try:
+            collector = Collector(env, policy, auto_register_policy_transforms=False, **collector_kwargs)
+        except TypeError:
+            collector = Collector(env, policy, **collector_kwargs)
+
+    gae_cls = SyncFreeGAE if device.type == "cuda" else GAE
+    advantage = gae_cls(gamma=args.gamma, lmbda=args.gae_lambda, value_network=value, average_gae=True)
+    loss_cls = GraphSafeClipPPOLoss if full_compile else ClipPPOLoss
+    loss_module = loss_cls(
         actor_network=policy, critic_network=value,
         clip_epsilon=args.clip_epsilon, entropy_bonus=True,
         entropy_coeff=args.entropy_coeff, critic_coeff=args.critic_coeff,
+        log_explained_variance=False,
     )
-    optim = torch.optim.Adam(loss_module.parameters(), lr=args.lr)
-    replay = ReplayBuffer(
-        storage=LazyTensorStorage(frames_per_batch, device=device),
-        sampler=SamplerWithoutReplacement(), batch_size=args.minibatch,
-    )
+    use_update_cudagraph = full_compile and args.update_cudagraph and args.num_envs <= args.cudagraph_max_envs
+    # capturable optimizer is required for the optimizer.step() to be CUDA-graph captured
+    optim = torch.optim.Adam(loss_module.parameters(), lr=args.lr, capturable=use_update_cudagraph)
+
+    minibatch = args.minibatch
+
+    def _ppo_update(sub):
+        """One minibatch step: loss -> backward -> clip -> opt.step. All on-GPU, CUDA-graph safe."""
+        losses = loss_module(sub)
+        loss = losses["loss_objective"] + losses["loss_critic"] + losses["loss_entropy"]
+        loss.backward()
+        nn.utils.clip_grad_norm_(loss_module.parameters(), 0.5)
+        optim.step()
+        # set_to_none=False keeps grad buffers at static addresses (required for graph replay)
+        optim.zero_grad(set_to_none=not use_update_cudagraph)
+        return losses.detach()
+
+    if full_compile:
+        update = torch.compile(_ppo_update, mode=args.compile_mode)
+        if use_update_cudagraph:
+            update = CudaGraphModule(update, warmup=3)  # clones outputs; captures fwd+bwd+opt as one graph
+            print("update   : compiled + cudagraph PPO update (capturable Adam, GPU randperm minibatcher)")
+        else:
+            why = "disabled" if not args.update_cudagraph else f"num_envs>{args.cudagraph_max_envs}"
+            print(f"update   : compiled PPO update, no cudagraph ({why}) — sync-free, scales to large num_envs")
+    else:
+        update = _ppo_update
 
     start_iter = 0
     best_points = 0.0
@@ -170,60 +293,123 @@ def main() -> None:
             args.ckpt,
         )
 
+    def set_entropy_coeff(val):
+        """Update the loss module's entropy coeff in-place (tensor buffer or plain attribute)."""
+        ec = getattr(loss_module, "entropy_coeff", None)
+        if torch.is_tensor(ec):
+            ec.fill_(val)
+        else:
+            loss_module.entropy_coeff = val
+
+    @torch.no_grad()
+    def gpu_rollout_source():
+        """Infinite sync-free GPU rollout. Each yield is one (num_envs, rollout) batch shaped exactly
+        like a TorchRL Collector batch. Reset is the env's branchless masked ``_reset`` (a no-op masked
+        write when no lane is done) — so there is no ``any_done`` host sync anywhere in collection."""
+        cur = env.reset().select("observation", "action_mask")
+        while True:
+            frames = []
+            for _ in range(args.rollout):
+                policy(cur)                                  # writes logits/action/sample_log_prob
+                out = env.step(cur)                          # adds the "next" sub-tensordict
+                frames.append(out)
+                done = out.get(("next", "done")).reshape(env.num_envs)
+                reset_in = TensorDict({"_reset": done}, batch_size=env.batch_size, device=device)
+                cur = env._reset(reset_in).select("observation", "action_mask")
+            yield torch.stack(frames, dim=1)                 # (num_envs, rollout); rollout = time dim
+
+    source = gpu_rollout_source() if full_compile else collector
+    minibatch = args.minibatch
+    warmup_iters = 5  # exclude compile/cudagraph warmup from the steady-state SPS measurement
     t0 = time.perf_counter()
+    t_steady = t0           # reset after warmup so steady SPS excludes one-time compile cost
+    frames_steady0 = 0
+    last_t, last_frames = t0, 0
     frames_done = 0
-    for i, data in enumerate(collector, start=start_iter):
+    for i, data in enumerate(source, start=start_iter):
+        # linear schedules (CleanRL-style): frac_done 0 -> 1 over the run
+        frac_done = (i - start_iter) / max(1, args.iters - 1)
+        if args.anneal_lr:
+            lr_now = args.lr * (1.0 + (args.lr_final_frac - 1.0) * frac_done)
+            for g in optim.param_groups:
+                g["lr"] = lr_now
+        if args.anneal_entropy:
+            set_entropy_coeff(args.entropy_coeff + (args.entropy_final - args.entropy_coeff) * frac_done)
+
+        # sync-free proof window: error on any host-device sync across collection + GAE + update
+        rel = i - start_iter
+        if args.prove_no_sync and rel == warmup_iters:
+            torch.cuda.synchronize()
+            torch.cuda.set_sync_debug_mode("error")
+            print(f"[sync-check] host-sync error mode ON at iter {i + 1} (collection + GAE + update)")
+        if args.prove_no_sync and rel == warmup_iters + 5:
+            torch.cuda.set_sync_debug_mode("default")
+            print(f"[sync-check] PASSED — 5 steady-state iters ran with ZERO host-device syncs")
+
+        # GAE ONCE per batch (was redundantly redone every epoch). Then a fully GPU-resident minibatcher:
+        # torch.randperm + index_select on-device (no CPU replay sampler), reshuffled per epoch.
+        with torch.no_grad():
+            advantage(data)
+        flat = data.reshape(-1)
+        nframes = flat.shape[0]
+        usable = (nframes // minibatch) * minibatch  # drop a ragged tail so minibatch shape is static
         for _ in range(args.epochs):
-            with torch.no_grad():
-                advantage(data)
-            replay.extend(data.reshape(-1))
-            for _ in range(max(1, frames_per_batch // args.minibatch)):
-                sub = replay.sample()
-                losses = loss_module(sub)
-                loss = losses["loss_objective"] + losses["loss_critic"] + losses["loss_entropy"]
-                loss.backward()
-                grad_norm = nn.utils.clip_grad_norm_(loss_module.parameters(), 0.5)
-                optim.step()
-                optim.zero_grad()
+            perm = torch.randperm(nframes, device=device)[:usable].view(-1, minibatch)
+            for mb in range(perm.shape[0]):
+                losses = update(flat[perm[mb]])
 
         frames_done += frames_per_batch
-        sps = frames_done / (time.perf_counter() - t0)
+        now = time.perf_counter()
+        if i - start_iter == warmup_iters:  # start the steady-state clock once graphs are hot
+            t_steady, frames_steady0 = now, frames_done
+        sps = frames_done / (now - t0)  # cumulative (incl. warmup); no host sync
+        steady_sps = (frames_done - frames_steady0) / (now - t_steady) if now > t_steady else sps
 
-        # --- metrics (headline: final points per episode) ---
-        with torch.no_grad():
-            points = env.points
-            cur_max = points.max().item()
-            best_points = max(best_points, cur_max)
-            mean_reward = data.get(("next", "reward")).mean().item()
-            writer.add_scalar("reward/mean", mean_reward, i)
-            writer.add_scalar("points/mean", points.mean().item(), i)
-            writer.add_scalar("points/max", cur_max, i)
-            writer.add_scalar("points/best_so_far", best_points, i)
-            writer.add_scalar("progress/astro_max", env.astro_lvl.max().item(), i)
-            writer.add_scalar("progress/plasma_max", env.plasma_lvl.max().item(), i)
-            writer.add_scalar("progress/day_mean", env.day.float().mean().item(), i)
-            writer.add_scalar("loss/objective", losses["loss_objective"].item(), i)
-            writer.add_scalar("loss/critic", losses["loss_critic"].item(), i)
-            writer.add_scalar("loss/entropy", losses["loss_entropy"].item(), i)
-            writer.add_scalar("loss/grad_norm", float(grad_norm), i)
-            writer.add_scalar("perf/sps", sps, i)
-
-        if (i + 1) % 10 == 0 or i == start_iter:
-            print(f"  iter {i + 1:5d}   reward {mean_reward: .4f}   points mean {points.mean().item():10.0f} "
-                  f"max {cur_max:12.0f}   astroL {env.astro_lvl.max().item():2d}   {sps/1e3:6.1f}k SPS")
+        # --- metrics: gated so the per-iter hot path stays sync-free (headline: points/episode) ---
+        in_sync_window = args.prove_no_sync and warmup_iters <= rel < warmup_iters + 5
+        log_now = ((i + 1) % args.metrics_every == 0 or i == start_iter
+                   or i + 1 >= start_iter + args.iters) and not in_sync_window
+        if log_now:
+            with torch.no_grad():
+                points = raw_env.points
+                cur_max = points.max().item()
+                best_points = max(best_points, cur_max)
+                mean_reward = data.get(("next", "reward")).mean().item()
+                writer.add_scalar("reward/mean", mean_reward, i)
+                writer.add_scalar("points/mean", points.mean().item(), i)
+                writer.add_scalar("points/max", cur_max, i)
+                writer.add_scalar("points/best_so_far", best_points, i)
+                writer.add_scalar("progress/astro_max", raw_env.astro_lvl.max().item(), i)
+                writer.add_scalar("progress/plasma_max", raw_env.plasma_lvl.max().item(), i)
+                writer.add_scalar("progress/day_mean", raw_env.day.float().mean().item(), i)
+                writer.add_scalar("loss/objective", losses["loss_objective"].item(), i)
+                writer.add_scalar("loss/critic", losses["loss_critic"].item(), i)
+                writer.add_scalar("loss/entropy", losses["loss_entropy"].item(), i)
+                inst_sps = (frames_done - last_frames) / max(1e-9, now - last_t)
+                last_t, last_frames = now, frames_done
+                writer.add_scalar("perf/sps", sps, i)
+                writer.add_scalar("perf/sps_steady", steady_sps, i)
+                writer.add_scalar("perf/sps_inst", inst_sps, i)
+                writer.add_scalar("sched/lr", optim.param_groups[0]["lr"], i)
+                print(f"  iter {i + 1:5d}   reward {mean_reward: .4f}   points mean {points.mean().item():10.0f} "
+                      f"max {cur_max:12.0f}   astroL {raw_env.astro_lvl.max().item():2d}   "
+                      f"{inst_sps/1e3:6.1f}k SPS (steady {steady_sps/1e3:5.0f}k)")
         if (i + 1) % args.save_every == 0:
             save(i + 1)
         if i + 1 >= start_iter + args.iters:
             break
 
-    collector.shutdown()
+    if collector is not None:
+        collector.shutdown()
     save(start_iter + args.iters)
     writer.close()
     if device.type == "cuda":
         torch.cuda.synchronize()
-    dt = time.perf_counter() - t0
-    print(f"\n[done] {frames_done} frames in {dt:.1f}s  ({frames_done/dt/1e3:.1f}k SPS)  "
-          f"best points {best_points:.0f}")
+    end = time.perf_counter()
+    dt = end - t0
+    steady = (frames_done - frames_steady0) / (end - t_steady) if end > t_steady else frames_done / dt
+    print(f"\n[done] {frames_done} frames in {dt:.1f}s  (cumulative {frames_done/dt/1e3:.1f}k SPS, "
+          f"steady-state {steady/1e3:.1f}k SPS)  best points {best_points:.0f}")
     print(f"checkpoint: {args.ckpt}   tensorboard: tensorboard --logdir {args.logdir}")
 
 

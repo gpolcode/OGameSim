@@ -52,6 +52,8 @@ class OGameTensorEnv(EnvBase):
         max_steps: int = 8000,
         reward_mode: str = "points",
         exploration_bonus: bool = True,
+        exploration_weight: float = 1.0,
+        log_obs: bool = False,
         seed: int = 0,
     ):
         super().__init__(device=device, batch_size=torch.Size([num_envs]))
@@ -59,8 +61,23 @@ class OGameTensorEnv(EnvBase):
         self.num_envs = num_envs
         self.max_steps = max_steps
         self.reward_mode = reward_mode
-        # whether the exploration-bucket bonus is added to the reward (always on in faithful mode)
-        self.include_exploration = exploration_bonus or reward_mode == "ogame"
+        # Exploration-bucket bonus weight. In faithful "ogame" mode it is the exact C# term
+        # (added unscaled). In "points" mode the raw bonus (~700 summed over an episode) dwarfs the
+        # telescoping log10-points base (~8), so it is *scaled* by ``exploration_weight`` — set small
+        # (or 0) so the smooth total-points potential stays the real objective.
+        if reward_mode == "ogame":
+            self.exploration_weight = 1.0
+        else:
+            self.exploration_weight = float(exploration_weight) if exploration_bonus else 0.0
+        # claim bookkeeping is only needed when the bonus actually contributes
+        self.include_exploration = self.exploration_weight != 0.0
+        # log1p-compress observations (raw MSE magnitudes reach ~3e8; a Tanh MLP saturates otherwise).
+        # Off by default so the faithful observation parity tests still see raw values.
+        self.log_obs = log_obs
+        # optional affine obs standardization, applied branchlessly in-env (no TorchRL transform, which
+        # would sync every step). Set via ``set_obs_norm`` once stats are estimated.
+        self._obs_loc = None
+        self._obs_scale = None
 
         self.luts = build_luts(self.device)
         self._lmax = self.luts.lmax
@@ -108,6 +125,14 @@ class OGameTensorEnv(EnvBase):
     def _set_seed(self, seed):
         self.rng = torch.manual_seed(seed) if seed is not None else None
         return seed
+
+    def set_obs_norm(self, loc, scale):
+        """Install a fixed affine obs standardization (obs-loc)/scale, applied in-env in ``_observe``.
+
+        Branchless and device-resident — unlike a TorchRL ``ObservationNorm`` transform whose
+        ``if self.standard_normal:`` (a tensor buffer) triggers a host sync on every step."""
+        self._obs_loc = loc.to(self.device, torch.float32)
+        self._obs_scale = scale.to(self.device, torch.float32)
 
     # --- derived quantities (branchless gathers) ------------------------------------------------
     def _planet_active(self):
@@ -174,7 +199,13 @@ class OGameTensorEnv(EnvBase):
             dim=2,
         )  # (N,20,6)
         body = body * active.unsqueeze(2)  # inactive planet slots -> 0
-        obs = torch.cat([head, body.reshape(n, MAX_PLANETS * 6)], dim=1).to(torch.float32)
+        obs = torch.cat([head, body.reshape(n, MAX_PLANETS * 6)], dim=1)
+        if self.log_obs:
+            # all components are non-negative MSE magnitudes; log1p is monotonic and well-conditioned
+            obs = torch.log1p(obs.clamp(min=0))
+        obs = obs.to(torch.float32)
+        if self._obs_loc is not None:
+            obs = (obs - self._obs_loc) / self._obs_scale
 
         # --- action mask ---
         res = self.resources_mse.unsqueeze(1)  # (N,1) int64, promotes vs f64 cost
@@ -323,7 +354,7 @@ class OGameTensorEnv(EnvBase):
         # reward
         if self.reward_mode == "points":
             base = torch.log10(self.points + 1.0) - torch.log10(points_before + 1.0)
-            reward = base + (explore if self.include_exploration else 0.0)
+            reward = base + self.exploration_weight * explore
         else:  # "ogame" — exact C# reward
             upgrade_reward = torch.log10(gained + 1.0) + explore
             reward = torch.where(
