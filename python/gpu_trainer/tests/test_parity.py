@@ -112,6 +112,25 @@ def test_greedy_trajectory_crosses_exploration_buckets(device):
 
 
 @pytest.mark.parametrize("device", DEVICES)
+def test_env_points_match_reference(device):
+    """The env's internal `points` accumulator (not in the obs) tracks the reference exactly."""
+    rng = random.Random(11)
+    seq = [rng.randint(0, 62) for _ in range(800)]
+    renv = ref.ReferenceEnv()
+    renv.reset()
+    env = OGameTensorEnv(num_envs=1, device=device, reward_mode="ogame")
+    td = env.reset()
+    for a in seq:
+        renv.step(a)
+        td.set("action", torch.tensor([a], dtype=torch.int64, device=device))
+        td = env.step(td)["next"]
+    ref_points = float(renv.player.points)
+    env_points = env.points[0].item()
+    assert abs(env_points - ref_points) <= 1e-3 + 1e-6 * abs(ref_points), \
+        f"env points {env_points} != reference {ref_points}"
+
+
+@pytest.mark.parametrize("device", DEVICES)
 def test_points_mode_telescopes_to_final_points(device):
     """sum of per-step `points` rewards (no exploration bonus) == log10(final_points + 1)."""
     rng = random.Random(7)
