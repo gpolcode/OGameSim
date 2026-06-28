@@ -1,0 +1,7 @@
+# training artifacts
+runs/
+checkpoints/
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
