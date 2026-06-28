@@ -1,0 +1,24 @@
+# Python deps for the GPU-resident training loop, layered ON TOP of the rocm/pytorch base image.
+#
+# !!! DO NOT add `torch` / `torchvision` / `torchaudio` here. !!!
+# The rocm/pytorch image already ships a ROCm (HIP) build of torch. Installing torch from PyPI
+# would pull a CUDA/CPU wheel and clobber the ROCm build — then torch.version.hip becomes None
+# and the GPU disappears.
+#
+# Version coupling: torchrl + tensordict must match the base image's torch version. If
+# validation/02_torchrl_ppo.py fails importing spec classes (Composite/Unbounded/Categorical),
+# it is almost always torchrl<->torch version skew, not a logic bug. Pin to versions known-good
+# for your image's torch (check `python -c "import torch; print(torch.__version__)"` first).
+
+# --- primary trainer (recommended path) ---
+torchrl>=0.6
+tensordict>=0.6
+
+# --- fallback trainer (turnkey YAML runner; see CONCEPT.md §5) ---
+rl_games>=1.6
+
+# --- env API + experiment plumbing (already used by ../pyTorchPlayer) ---
+gymnasium>=0.29
+tyro
+wandb
+tensorboard

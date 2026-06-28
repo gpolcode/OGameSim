@@ -1,0 +1,31 @@
+# Container image for the fully-GPU-resident OGameSim training loop on AMD ROCm.
+#
+# Base = AMD's official PyTorch+ROCm image (torch with HIP preinstalled). We only layer the RL
+# libraries on top. See CONCEPT.md §6/§7.
+#
+# Build:
+#   podman build -t ogamesim-gpu -f Containerfile .
+# Run (with GPU passthrough):
+#   ./run-container.sh ogamesim-gpu
+#
+# Pinning: ':latest' is convenient but some users hit intermittent gfx1100 (7900 XTX) hangs on
+# it (CONCEPT.md §10). If validation step 3 stalls, pin a known-good tag by overriding BASE_IMAGE,
+# e.g.:
+#   podman build --build-arg BASE_IMAGE=rocm/pytorch:rocm6.2.4_ubuntu22.04_py3.10_pytorch_release_2.3.0 \
+#                -t ogamesim-gpu -f Containerfile .
+# Browse tags: https://hub.docker.com/r/rocm/pytorch/tags
+ARG BASE_IMAGE=rocm/pytorch:latest
+FROM ${BASE_IMAGE}
+
+# Keep pip from trying to "helpfully" reinstall torch from PyPI (which would replace the ROCm
+# build with a CUDA/CPU one). requirements.txt deliberately omits torch.
+WORKDIR /opt/ogamesim
+COPY requirements.txt .
+RUN python -m pip install --no-cache-dir --upgrade pip \
+ && python -m pip install --no-cache-dir -r requirements.txt
+
+# Sanity line at build time: fail the build loudly if torch lost its HIP backend.
+RUN python -c "import torch; assert torch.version.hip, 'torch lost its ROCm/HIP backend — check requirements.txt does not pull torch from PyPI'; print('ROCm torch OK:', torch.__version__, 'hip', torch.version.hip)"
+
+WORKDIR /workspace
+CMD ["/bin/bash"]
