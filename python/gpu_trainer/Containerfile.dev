@@ -1,0 +1,33 @@
+# Development image: the ROCm runtime PLUS Node.js + Claude Code, so the implementation phase
+# (porting the C# economy to a batched tensor env, scaling, profiling) can run with Claude Code
+# *inside* the GPU container — direct GPU + repo access, no paste-back relay. See CONCEPT.md §11.
+#
+# Build:
+#   podman build -t ogamesim-dev -f Containerfile.dev .
+# Run:
+#   ./run-dev.sh                 # launches the container; run `claude` inside it
+#
+# Self-contained (FROM rocm/pytorch, not FROM ogamesim-gpu) so it builds in one step.
+ARG BASE_IMAGE=rocm/pytorch:latest
+FROM ${BASE_IMAGE}
+
+# --- RL libraries (same torch-protected install as the runtime Containerfile) ---
+WORKDIR /opt/ogamesim
+COPY requirements.txt .
+RUN python -m pip install --no-cache-dir --upgrade pip \
+ && pip show torch | grep ^Version: | tr -d ' ' | sed s/Version:/torch==/ > /tmp/torch-constraint.txt \
+ && echo "torch pin: $(cat /tmp/torch-constraint.txt)" \
+ && python -m pip install --no-cache-dir -c /tmp/torch-constraint.txt -r requirements.txt \
+ && python -c "import torch; assert torch.version.hip, 'torch lost its ROCm/HIP backend'; print('ROCm torch OK:', torch.__version__)"
+
+# --- Node.js (Claude Code is an npm package) ---
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && rm -rf /var/lib/apt/lists/*
+
+# --- Claude Code CLI ---
+RUN npm install -g @anthropic-ai/claude-code \
+ && claude --version
+
+WORKDIR /workspace
+CMD ["/bin/bash"]
