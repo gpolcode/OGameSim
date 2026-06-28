@@ -35,7 +35,7 @@ try:
     from tensordict.nn import CudaGraphModule
 except ImportError:  # pragma: no cover
     CudaGraphModule = None
-from torchrl.envs.utils import ExplorationType, check_env_specs
+from torchrl.envs.utils import ExplorationType, check_env_specs, set_exploration_type
 from torchrl.modules import MLP, ProbabilisticActor, ValueOperator, MaskedCategorical
 from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
@@ -48,6 +48,27 @@ from torch.utils.tensorboard import SummaryWriter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ogame.env import OGameTensorEnv  # noqa: E402
 from tensordict import TensorDict, is_tensor_collection  # noqa: E402
+
+# The hand-crafted greedy best-ROI reference (OGameSim.Console) scores exactly this over 8000 steps;
+# mirrors tests/test_integration_console.py::EXPECTED_POINTS. The training goal is to *beat* it.
+REFERENCE_POINTS = 266_316_720.384
+
+
+@torch.no_grad()
+def evaluate(eval_env, policy, steps, deterministic=False):
+    """Full-episode rollout -> final points per eval env. Sync-free, no grad.
+
+    Default is STOCHASTIC (ExplorationType.RANDOM) — the policy as it actually plays, with each eval
+    env an independent playthrough (so max = best-of-batch). The masked-argmax (DETERMINISTIC) mode
+    tends to collapse to repeatedly 'proceed' until entropy has annealed low, so it is opt-in."""
+    et = ExplorationType.DETERMINISTIC if deterministic else ExplorationType.RANDOM
+    td = eval_env.reset().select("observation", "action_mask")
+    with set_exploration_type(et):
+        for _ in range(steps):
+            policy(td)
+            out = eval_env.step(td)
+            td = out.get("next").select("observation", "action_mask")
+    return eval_env.points  # (eval_envs,) float64, accumulated over the single episode
 
 
 class SyncFreeGAE(GAE):
@@ -151,6 +172,20 @@ def main() -> None:
     ap.add_argument("--lr-final-frac", type=float, default=0.0, help="final LR = lr * this fraction")
     ap.add_argument("--metrics-every", type=int, default=10, help="iters between host-sync metric reads")
     ap.add_argument("--max-seconds", type=float, default=0.0, help="wall-clock cap; 0 = run all --iters")
+    # deterministic eval vs the hand-crafted reference (the success metric for beating it)
+    ap.add_argument("--eval-every", type=int, default=0, help="iters between deterministic evals; 0=off")
+    ap.add_argument("--eval-envs", type=int, default=256,
+                    help="parallel envs for the eval rollout (deterministic -> all identical; few suffice)")
+    ap.add_argument("--eval-steps", type=int, default=8000, help="steps per eval episode (reference uses 8000)")
+    ap.add_argument("--eval-deterministic", action="store_true", default=False,
+                    help="eval with masked-argmax instead of sampling (collapses to 'proceed' until entropy is low)")
+    # intrinsic exploration: reward visiting under-explored *strategic* configs (astro/plasma/planets/
+    # day/points-tier) the greedy reference never reaches. Count-based pseudo-counts: bonus=beta/sqrt(count).
+    ap.add_argument("--intrinsic", default="none", choices=["none", "count", "rnd", "both"])
+    ap.add_argument("--intrinsic-weight", type=float, default=0.05, help="beta at start of training")
+    ap.add_argument("--intrinsic-weight-final", type=float, default=0.0, help="beta at end (decays start->final)")
+    ap.add_argument("--novelty-bits", type=int, default=22, help="count-table size = 1<<bits")
+    ap.add_argument("--novelty-day-bucket", type=int, default=50, help="days per signature bucket")
     ap.add_argument("--compile", action="store_true", default=False)
     # Fully GPU-resident hot loop (default ON for cuda): a custom sync-free rollout (no collector
     # any_done host-sync) + a compiled PPO update over a GPU randperm minibatcher. Zero CPU compute /
@@ -202,6 +237,19 @@ def main() -> None:
         print(f"obs_norm : in-env standardization over {args.obs_norm_steps} random steps "
               f"(loc {float(loc.mean()):.2f}, scale {float(scale.mean()):.2f})")
     env = raw_env
+
+    # dedicated eval env (own lanes), same economy + obs-norm, for deterministic eval vs the reference
+    eval_env = None
+    if args.eval_every and device.type == "cuda":
+        eval_env = OGameTensorEnv(
+            args.eval_envs, device=device, reward_mode=args.reward_mode,
+            exploration_bonus=args.exploration_bonus, exploration_weight=args.exploration_weight,
+            log_obs=args.log_obs,
+        )
+        if args.obs_norm:
+            eval_env.set_obs_norm(loc, scale)
+        print(f"eval     : every {args.eval_every} iters, {args.eval_envs} envs x {args.eval_steps} steps "
+              f"({'deterministic' if args.eval_deterministic else 'stochastic'}) vs reference {REFERENCE_POINTS:.0f}")
 
     print("\nchecking env specs (check_env_specs) ...", flush=True)
     check_env_specs(env)
@@ -307,6 +355,42 @@ def main() -> None:
         else:
             loss_module.entropy_coeff = val
 
+    # --- count-based novelty (intrinsic exploration) ----------------------------------------------
+    use_count = args.intrinsic in ("count", "both")
+    if use_count and not full_compile:
+        print("[WARN] --intrinsic needs the custom GPU rollout (full-compile); ignoring on collector path.")
+        use_count = False
+    novelty_T = 1 << args.novelty_bits
+    novelty_counts = torch.zeros(novelty_T, device=device)
+    ones_n = torch.ones(args.num_envs, device=device)
+    intrinsic_beta = [args.intrinsic_weight]   # mutable holder; updated by the per-iter schedule
+    intrinsic_stat = [0.0]                      # last mean bonus, for logging
+    D = max(1, args.novelty_day_bucket)
+
+    def strategic_sig():
+        """(N,) int64 hash of the current strategic config — astro/plasma/#planets/day-bucket/points-tier.
+        Branchless gathers off raw_env state; collisions tolerated via modulo into the count table."""
+        astro = raw_env.astro_lvl.clamp(max=63)
+        plasma = raw_env.plasma_lvl.clamp(max=63)
+        nplan = ((((raw_env.astro_lvl + 1) // 2) + 1).clamp(max=20))
+        dayb = (raw_env.day // D).clamp(max=255)
+        tier = torch.log10(raw_env.points + 1.0).clamp(min=0, max=10).to(torch.int64)
+        h = astro
+        h = h * 64 + plasma
+        h = h * 21 + nplan
+        h = h * 256 + dayb
+        h = h * 11 + tier
+        return h % novelty_T
+
+    def add_novelty(out):
+        """Add beta/sqrt(count+1) to this step's reward and bump the visit counts. Fully sync-free."""
+        idx = strategic_sig()
+        bonus = intrinsic_beta[0] / torch.sqrt(novelty_counts[idx] + 1.0)
+        novelty_counts.index_add_(0, idx, ones_n)
+        r = out.get(("next", "reward"))
+        r.add_(bonus.reshape_as(r).to(r.dtype))
+        intrinsic_stat[0] = bonus.mean()
+
     @torch.no_grad()
     def gpu_rollout_source():
         """Infinite sync-free GPU rollout. Each yield is one (num_envs, rollout) batch shaped exactly
@@ -318,6 +402,8 @@ def main() -> None:
             for _ in range(args.rollout):
                 policy(cur)                                  # writes logits/action/sample_log_prob
                 out = env.step(cur)                          # adds the "next" sub-tensordict
+                if use_count:
+                    add_novelty(out)                         # intrinsic bonus into ("next","reward")
                 frames.append(out)
                 done = out.get(("next", "done")).reshape(env.num_envs)
                 reset_in = TensorDict({"_reset": done}, batch_size=env.batch_size, device=device)
@@ -341,6 +427,8 @@ def main() -> None:
                 g["lr"] = lr_now
         if args.anneal_entropy:
             set_entropy_coeff(args.entropy_coeff + (args.entropy_final - args.entropy_coeff) * frac_done)
+        # intrinsic weight decays start -> final so the agent explores early, exploits late
+        intrinsic_beta[0] = args.intrinsic_weight + (args.intrinsic_weight_final - args.intrinsic_weight) * frac_done
 
         # sync-free proof window: error on any host-device sync across collection + GAE + update
         rel = i - start_iter
@@ -397,9 +485,26 @@ def main() -> None:
                 writer.add_scalar("perf/sps_steady", steady_sps, i)
                 writer.add_scalar("perf/sps_inst", inst_sps, i)
                 writer.add_scalar("sched/lr", optim.param_groups[0]["lr"], i)
+                if use_count:
+                    writer.add_scalar("explore/intrinsic_mean", float(intrinsic_stat[0]), i)
+                    writer.add_scalar("explore/beta", intrinsic_beta[0], i)
+                    writer.add_scalar("explore/novel_frac", float((novelty_counts == 0).float().mean()), i)
                 print(f"  iter {i + 1:5d}   reward {mean_reward: .4f}   points mean {points.mean().item():10.0f} "
                       f"max {cur_max:12.0f}   astroL {raw_env.astro_lvl.max().item():2d}   "
                       f"{inst_sps/1e3:6.1f}k SPS (steady {steady_sps/1e3:5.0f}k)")
+        # deterministic eval vs the reference (outside the sync-free window; reading points syncs)
+        if (eval_env is not None and (i + 1) % args.eval_every == 0 and not in_sync_window):
+            ep = evaluate(eval_env, policy, args.eval_steps, deterministic=args.eval_deterministic)
+            ev_max, ev_mean = ep.max().item(), ep.mean().item()
+            frac = (ep > REFERENCE_POINTS).float().mean().item()
+            writer.add_scalar("eval/points_max", ev_max, i)
+            writer.add_scalar("eval/points_mean", ev_mean, i)
+            writer.add_scalar("eval/frac_beating_ref", frac, i)
+            writer.add_scalar("eval/ratio_to_ref", ev_max / REFERENCE_POINTS, i)
+            kind = "det" if args.eval_deterministic else "sto"
+            beat = "  ** BEATS REFERENCE **" if ev_max > REFERENCE_POINTS else ""
+            print(f"  [eval {i + 1:5d}] {kind}. points mean {ev_mean:12.0f} max {ev_max:12.0f}  "
+                  f"({100 * ev_max / REFERENCE_POINTS:5.1f}% of ref, {100 * frac:4.1f}% beat){beat}")
         if (i + 1) % args.save_every == 0:
             save(i + 1)
         if i + 1 >= start_iter + args.iters:
