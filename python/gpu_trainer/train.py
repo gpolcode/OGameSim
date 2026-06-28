@@ -419,8 +419,13 @@ def main() -> None:
     last_t, last_frames = t0, 0
     frames_done = 0
     for i, data in enumerate(source, start=start_iter):
-        # linear schedules (CleanRL-style): frac_done 0 -> 1 over the run
-        frac_done = (i - start_iter) / max(1, args.iters - 1)
+        # linear schedules (CleanRL-style): frac_done 0 -> 1 over the run. For wall-clock-capped runs
+        # (--max-seconds, with --iters left huge) anneal over ELAPSED TIME, else over iters — otherwise
+        # frac_done stays ~0 all run and entropy/LR/intrinsic-weight never anneal (policy never sharpens).
+        if args.max_seconds:
+            frac_done = min(1.0, (time.perf_counter() - t0) / args.max_seconds)
+        else:
+            frac_done = min(1.0, (i - start_iter) / max(1, args.iters - 1))
         if args.anneal_lr:
             lr_now = args.lr * (1.0 + (args.lr_final_frac - 1.0) * frac_done)
             for g in optim.param_groups:
