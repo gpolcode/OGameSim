@@ -47,12 +47,16 @@ The economy port + GPU-resident masked-PPO loop are done and tuned. Headline num
   objective (`exploration_weight`, default 0 in `points` mode); `ogame` mode stays bit-exact.
 - Linear entropy + LR anneal. Tuned defaults: **16384 envs, rollout 32, γ=0.9997, entropy 0.05→0.01.**
   More envs *hurt* learning per wall-clock (too few PPO updates) — 16384 is the sweet spot.
-- Reaches **~242M points (91% of the 266,316,720.384 hand-crafted `OGameSim.Console` reference) with
-  full 20-planet expansion** in a 10-min run. Long-horizon credit (high γ, longer rollout, sustained
-  entropy) was the key to escaping the partial-expansion plateau.
+- Reliable performance is **~80% of the 266,316,720.384 `OGameSim.Console` reference** (eval *mean*
+  ~214M over full-episode playthroughs), with full 20-planet expansion — *only while exploration
+  stays high*. (An earlier "242M/91%" was a high-variance best-of-batch max, not reproducible.)
 
-**Current objective:** *beat* 266M via intrinsic exploration (the greedy reference never sacrifices
-short-term ROI). Success = a deterministic (argmax) eval rollout scoring > 266,316,720.384.
+**Current objective:** *beat* 266M via intrinsic exploration. **See `EXPLORATION.md` for the
+session's findings + plan to continue** — annealing entropy/LR *collapses* performance (use
+`--no-anneal-entropy`); count-based novelty works but **needs reward normalization** (done) or it
+NaN-crashes; the deterministic policy collapses to "proceed" so eval is stochastic. Stable starting
+config: `python train.py --intrinsic count --intrinsic-weight 0.02 --no-anneal-entropy
+--lr-final-frac 0.3 --eval-every 150 --max-seconds 3600`.
 
 **Invariants when changing the loop:** keep all 87 tests green, keep `ogame` mode bit-exact, and keep
 `--prove-no-sync` passing (the training hot loop must touch the CPU for nothing).

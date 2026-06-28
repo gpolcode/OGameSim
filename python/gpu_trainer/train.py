@@ -365,6 +365,7 @@ def main() -> None:
     ones_n = torch.ones(args.num_envs, device=device)
     intrinsic_beta = [args.intrinsic_weight]   # mutable holder; updated by the per-iter schedule
     intrinsic_stat = [0.0]                      # last mean bonus, for logging
+    novelty_rms = torch.ones((), device=device)  # running RMS of the raw novelty signal (EMA, on-device)
     D = max(1, args.novelty_day_bucket)
 
     def strategic_sig():
@@ -383,10 +384,16 @@ def main() -> None:
         return h % novelty_T
 
     def add_novelty(out):
-        """Add beta/sqrt(count+1) to this step's reward and bump the visit counts. Fully sync-free."""
+        """Add a normalized novelty bonus to this step's reward and bump the visit counts. Sync-free.
+
+        Raw novelty is 1/sqrt(count+1) in (0,1]; we standardize it by a running RMS (EMA) and clamp,
+        so the per-step bonus is ~beta regardless of how the raw signal drifts — without this the
+        un-normalized bonus inflated the value target until the critic overshot to inf -> NaN."""
         idx = strategic_sig()
-        bonus = intrinsic_beta[0] / torch.sqrt(novelty_counts[idx] + 1.0)
+        raw = 1.0 / torch.sqrt(novelty_counts[idx] + 1.0)          # (N,) in (0,1]
         novelty_counts.index_add_(0, idx, ones_n)
+        novelty_rms.mul_(0.99).add_(0.01 * (raw * raw).mean())     # EMA of mean-square, on-device
+        bonus = (intrinsic_beta[0] * raw / torch.sqrt(novelty_rms + 1e-8)).clamp_(max=5.0 * intrinsic_beta[0])
         r = out.get(("next", "reward"))
         r.add_(bonus.reshape_as(r).to(r.dtype))
         intrinsic_stat[0] = bonus.mean()
