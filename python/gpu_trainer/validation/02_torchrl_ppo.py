@@ -254,13 +254,19 @@ def main() -> None:
     frames_per_batch = args.num_envs * args.rollout
     total_frames = frames_per_batch * args.iters
 
-    collector = Collector(
-        env,
-        policy,
+    # run + store rollouts on the GPU — no CPU round-trip
+    collector_kwargs = dict(
         frames_per_batch=frames_per_batch,
         total_frames=total_frames,
-        device=device,                    # run + store rollouts on the GPU — no CPU round-trip
+        device=device,
     )
+    # A feed-forward MLP policy needs no extra transforms; auto_register_policy_transforms=False
+    # silences torchrl's v0.15 FutureWarning, but the kwarg only exists on newer torchrl — so fall
+    # back gracefully if this version doesn't accept it.
+    try:
+        collector = Collector(env, policy, auto_register_policy_transforms=False, **collector_kwargs)
+    except TypeError:
+        collector = Collector(env, policy, **collector_kwargs)
 
     advantage = GAE(gamma=0.99, lmbda=0.95, value_network=value, average_gae=True)
     loss_module = ClipPPOLoss(
@@ -268,8 +274,8 @@ def main() -> None:
         critic_network=value,
         clip_epsilon=0.2,
         entropy_bonus=True,
-        entropy_coef=0.01,
-        critic_coef=1.0,
+        entropy_coeff=0.01,   # torchrl >= 0.11 renamed *_coef -> *_coeff
+        critic_coeff=1.0,
     )
     optim = torch.optim.Adam(loss_module.parameters(), lr=args.lr)
 
