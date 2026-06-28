@@ -119,18 +119,21 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
     ap.add_argument("--num-envs", type=int, default=16384)
-    ap.add_argument("--rollout", type=int, default=16, help="env steps per collected batch")
+    ap.add_argument("--rollout", type=int, default=32, help="env steps per collected batch")
     ap.add_argument("--iters", type=int, default=1000)
     ap.add_argument("--epochs", type=int, default=8)
     ap.add_argument("--minibatch", type=int, default=8192)
     ap.add_argument("--lr", type=float, default=5e-4)
     ap.add_argument("--hidden", type=int, default=125, help="width of the two MLP hidden layers")
-    # gamma defaults near 1: the episode is 8000 steps and the objective is total points, so a myopic
-    # gamma (ppo.py used 0.95) would under-credit early economy building. lambda from ppo.py.
-    ap.add_argument("--gamma", type=float, default=0.999)
+    # gamma very near 1: episodes are 8000 steps and the objective is total points; planet/astro
+    # expansion only pays off over many future days, so a myopic gamma under-credits it and the agent
+    # plateaus at partial expansion. Tuning runs: gamma 0.999 -> 0.9997 lifted final points ~1.6x and
+    # took astro to full (20/20 planets). lambda from ppo.py.
+    ap.add_argument("--gamma", type=float, default=0.9997)
     ap.add_argument("--gae-lambda", type=float, default=0.95)
     ap.add_argument("--clip-epsilon", type=float, default=0.2)
-    ap.add_argument("--entropy-coeff", type=float, default=0.03, help="entropy coeff at start of training")
+    # sustained exploration (0.05 -> 0.01) beat 0.03 -> 0 in tuning: keeps probing astro/expansion late.
+    ap.add_argument("--entropy-coeff", type=float, default=0.05, help="entropy coeff at start of training")
     ap.add_argument("--critic-coeff", type=float, default=0.5)
     ap.add_argument("--reward-mode", default="points", choices=["points", "ogame"])
     ap.add_argument("--no-exploration-bonus", dest="exploration_bonus", action="store_false", default=True)
@@ -144,20 +147,23 @@ def main() -> None:
     # schedules (CleanRL-style linear anneal)
     ap.add_argument("--no-anneal-lr", dest="anneal_lr", action="store_false", default=True)
     ap.add_argument("--no-anneal-entropy", dest="anneal_entropy", action="store_false", default=True)
-    ap.add_argument("--entropy-final", type=float, default=0.0, help="entropy coeff at end of training")
+    ap.add_argument("--entropy-final", type=float, default=0.01, help="entropy coeff at end of training")
     ap.add_argument("--lr-final-frac", type=float, default=0.0, help="final LR = lr * this fraction")
     ap.add_argument("--metrics-every", type=int, default=10, help="iters between host-sync metric reads")
+    ap.add_argument("--max-seconds", type=float, default=0.0, help="wall-clock cap; 0 = run all --iters")
     ap.add_argument("--compile", action="store_true", default=False)
     # Fully GPU-resident hot loop (default ON for cuda): a custom sync-free rollout (no collector
     # any_done host-sync) + a compiled PPO update over a GPU randperm minibatcher. Zero CPU compute /
     # zero host-device syncs per iter (verify with --prove-no-sync). Auto-off on cpu. --no-full-compile
     # falls back to the stock TorchRL Collector path.
     ap.add_argument("--no-full-compile", dest="full_compile", action="store_false", default=True)
-    # CUDA-graph the PPO update (lowest launch overhead, best small-N SPS). On ROCm this can HSA-fault
-    # at large num_envs due to allocation churn vs the captured pool, so it's disabled past --cudagraph-max-envs.
-    ap.add_argument("--no-update-cudagraph", dest="update_cudagraph", action="store_false", default=True)
+    # CUDA-graph the PPO update (lowest launch overhead). OFF by default: on ROCm it HSA-faults once the
+    # captured allocation (num_envs x rollout) gets large (e.g. 8192 envs x rollout 32), and the
+    # compiled-only update is already sync-free and just as fast at scale. Opt in with --update-cudagraph
+    # for small num_envs x rollout. --cudagraph-max-envs additionally caps it by num_envs.
+    ap.add_argument("--update-cudagraph", dest="update_cudagraph", action="store_true", default=False)
     ap.add_argument("--cudagraph-max-envs", type=int, default=8192,
-                    help="auto-disable the update cudagraph above this num_envs (ROCm stability)")
+                    help="also auto-disable the update cudagraph above this num_envs (ROCm stability)")
     # hard proof that the hot loop touches the CPU for nothing: error on ANY host-device sync for a
     # window of steady-state iters (collection + GAE + compiled update). Metrics are muted in-window.
     ap.add_argument("--prove-no-sync", action="store_true", default=False)
@@ -397,6 +403,9 @@ def main() -> None:
         if (i + 1) % args.save_every == 0:
             save(i + 1)
         if i + 1 >= start_iter + args.iters:
+            break
+        if args.max_seconds and (now - t0) > args.max_seconds:
+            print(f"  [max-seconds {args.max_seconds:.0f}s reached at iter {i + 1}]")
             break
 
     if collector is not None:
